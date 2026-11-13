@@ -142,7 +142,6 @@
 <body>
     <iframe class="app-frame" id="app" title="ระบบแจ้งปัญหาคอมพิวเตอร์และอุปกรณ์"
         data-app-url="https://script.google.com/macros/s/AKfycbxti_Wc4yJepfYI5vPq5ZsO4a3XBeTj3I4Bupm_CbVwlF3FXoyrI8wGNKmclNMcysZLQw/exec"
-        src="https://script.google.com/macros/s/AKfycbxti_Wc4yJepfYI5vPq5ZsO4a3XBeTj3I4Bupm_CbVwlF3FXoyrI8wGNKmclNMcysZLQw/exec"
         allow="clipboard-write"></iframe>
 
     <div class="splash" id="splash" role="status">
@@ -161,12 +160,95 @@
             var openApp = document.getElementById('openApp');
             var appUrl = frame.getAttribute('data-app-url');
 
+            /* ---------- จำ session ของเจ้าหน้าที่ไว้ที่หน้านี้ ----------
+               หน้าแอปทำงานใน iframe ของ Google ซึ่งรีเฟรชแล้ว token หาย
+               (URL ที่เบราว์เซอร์เห็นคือ …/exec ไม่ใช่ URL ใน iframe)
+               จึงเก็บ token ไว้ที่ origin ของหน้านี้ แล้วแนบ ?t=…&page=…
+               กลับไปให้ iframe ทุกครั้งที่โหลด
+
+               ผู้ใช้ทั่วไปที่ยังไม่ล็อกอิน = ไม่มี session → โหลดแอปตามปกติ
+               (เห็นฟอร์มแจ้งซ่อม/ติดตามสถานะ ไม่ต้องล็อกอิน) */
+            var STORE_KEY = 'dtam:session';
+
+            function readSession() {
+                try {
+                    var data = JSON.parse(window.localStorage.getItem(STORE_KEY) || 'null');
+
+                    if (!data || !data.token) {
+                        return null;
+                    }
+
+                    if (data.exp && Number(data.exp) < Date.now()) {
+                        window.localStorage.removeItem(STORE_KEY);
+                        return null;
+                    }
+
+                    return data;
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            function writeSession(data) {
+                try {
+                    if (data && data.token) {
+                        window.localStorage.setItem(STORE_KEY, JSON.stringify(data));
+                    } else {
+                        window.localStorage.removeItem(STORE_KEY);
+                    }
+                } catch (e) { }
+            }
+
+            function withSession(url) {
+                var session = readSession();
+
+                if (!session) {
+                    return url;
+                }
+
+                var query = 't=' + encodeURIComponent(session.token) +
+                    '&page=' + encodeURIComponent(session.page || 'dashboard');
+
+                return url + (url.indexOf('?') >= 0 ? '&' : '?') + query;
+            }
+
+            function refreshLinks() {
+                var url = withSession(appUrl);
+
+                openApp.href = url;
+
+                return url;
+            }
+
+            /* ตัวแอปส่ง session มาให้เมื่อล็อกอิน/เปลี่ยนหน้า/ออกจากระบบ */
+            window.addEventListener('message', function (event) {
+                var data = event.data;
+
+                if (!data || data.dtam !== 'auth') {
+                    return;
+                }
+
+                if (data.token) {
+                    writeSession({
+                        token: String(data.token),
+                        page: data.page || 'dashboard',
+                        name: data.name || '',
+                        exp: Number(data.exp || 0)
+                    });
+                } else {
+                    writeSession(null);
+                }
+
+                /* อัปเดตเฉพาะปุ่มเปิดแท็บใหม่ — ไม่แตะ iframe
+                   (โหลด iframe ใหม่ตอนนี้ = รีเฟรชแอปโดยไม่จำเป็น) */
+                refreshLinks();
+            });
+
             var loaded = false;
 
             /* ให้ iframe + ปุ่ม "เปิดในแท็บใหม่" ใช้ URL เดียวกันเสมอ
                (แก้ที่ data-app-url จุดเดียวพอ) */
-            frame.src = appUrl;
-            openApp.href = appUrl;
+            frame.src = refreshLinks();
 
             function hideSplash() {
                 splash.classList.add('is-hidden');
