@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ระบบแจ้งปัญหาคอมพิวเตอร์และอุปกรณ์</title>
+    <meta name="description" content="ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก — แจ้งปัญหา/ติดตามสถานะ/ระบบเจ้าหน้าที่">
+    <meta name="theme-color" content="#1a7a44">
+    <link rel="icon" href="data:,">
+
+    <!-- ไฟล์นี้เป็น "หน้ากาก" ของเว็บแอป Google Apps Script
+         ตัวแอปทำงานอยู่บน Google (…/exec) ทั้งหมด — บันทึกลงชีต/อัปโหลดรูปได้ครบ
+         หน้านี้มีไว้ให้ได้ลิงก์ github.io ที่สั้นและส่งต่อง่ายเท่านั้น
+
+         ถ้าดีพลอยใหม่แล้ว URL ของเว็บแอปเปลี่ยน ให้แก้ค่าที่ data-app-url ด้านล่างจุดเดียว -->
+    <style>
+        :root {
+            --brand-green: #1a7a44;
+            --page-bg: #f4f7f9;
+            --text: #2c3b34;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            background: var(--page-bg);
+            color: var(--text);
+            font-family: "Kanit", "Sarabun", "Segoe UI", Tahoma, sans-serif;
+        }
+
+        /* ตัวแอปเอง (iframe) กินเต็มจอ — ไม่มีขอบ ไม่มี scrollbar ซ้อน */
+        .app-frame {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            background: var(--page-bg);
+        }
+
+        /* ---------- หน้าโหลดระหว่างรอ Google ตอบ -- */
+        .splash {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            background: var(--page-bg);
+            transition: opacity 0.28s ease;
+        }
+
+        .splash.is-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .splash p {
+            margin: 0;
+            color: var(--brand-green);
+            font-size: 0.875rem;
+        }
+
+        .ring {
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(26, 122, 68, 0.16);
+            border-top-color: var(--brand-green);
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .ring {
+                animation: none;
+            }
+        }
+
+        /* ---------- ทางออกเมื่อ Google ไม่ยอมให้ฝัง iframe ---------- */
+        .open-app {
+            position: fixed;
+            right: 14px;
+            bottom: 14px;
+            z-index: 3;
+            padding: 9px 14px;
+            border-radius: 999px;
+            background: var(--brand-green);
+            color: #fff;
+            font-size: 0.8125rem;
+            text-decoration: none;
+            box-shadow: 0 6px 18px rgba(26, 122, 68, 0.28);
+        }
+
+        .open-app:hover,
+        .open-app:focus-visible {
+            background: #155f34;
+        }
+    </style>
+</head>
+
+<body>
+    <iframe class="app-frame" id="app" title="ระบบแจ้งปัญหาคอมพิวเตอร์และอุปกรณ์"
+        data-app-url="https://script.google.com/macros/s/AKfycbxti_Wc4yJepfYI5vPq5ZsO4a3XBeTj3I4Bupm_CbVwlF3FXoyrI8wGNKmclNMcysZLQw/exec"
+        src="https://script.google.com/macros/s/AKfycbxti_Wc4yJepfYI5vPq5ZsO4a3XBeTj3I4Bupm_CbVwlF3FXoyrI8wGNKmclNMcysZLQw/exec"
+        allow="clipboard-write"></iframe>
+
+    <div class="splash" id="splash" role="status">
+        <span class="ring" aria-hidden="true"></span>
+        <p>กำลังเปิดระบบ…</p>
+    </div>
+
+    <a class="open-app" id="openApp"
+        href="https://script.google.com/macros/s/AKfycbxti_Wc4yJepfYI5vPq5ZsO4a3XBeTj3I4Bupm_CbVwlF3FXoyrI8wGNKmclNMcysZLQw/exec"
+        target="_blank" rel="noopener">เปิดในแท็บใหม่</a>
+
+    <script>
+        (function () {
+            var frame = document.getElementById('app');
+            var splash = document.getElementById('splash');
+            var openApp = document.getElementById('openApp');
+            var appUrl = frame.getAttribute('data-app-url');
+
+            /* ให้ iframe + ปุ่ม "เปิดในแท็บใหม่" ใช้ URL เดียวกันเสมอ
+               (แก้ที่ data-app-url จุดเดียวพอ) */
+            frame.src = appUrl;
+            openApp.href = appUrl;
+
+            function hideSplash() {
+                splash.classList.add('is-hidden');
+            }
+
+            frame.addEventListener('load', function () {
+                window.setTimeout(hideSplash, 150);
+            });
+
+            /* กันเหนียว: Google บล็อกการฝังหรือเน็ตช้า ก็ไม่ค้างอยู่ที่หน้าโหลด
+               (ถ้าจอว่าง ผู้ใช้ยังกด "เปิดในแท็บใหม่" ได้) */
+            window.setTimeout(hideSplash, 8000);
+        })();
+    </script>
+</body>
+
+</html>
