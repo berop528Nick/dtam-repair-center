@@ -97,7 +97,9 @@
             }
         }
 
-        /* ---------- ทางออกเมื่อ Google ไม่ยอมให้ฝัง iframe ---------- */
+        /* ---------- ทางออกเมื่อ Google ไม่ยอมให้ฝัง iframe ----------
+           ซ่อนไว้เป็นค่าเริ่มต้น (ไม่ให้บังแอปตอนใช้งานปกติ)
+           สคริปต์ด้านล่างจะเติมคลาส .is-shown เฉพาะเมื่อโหลดแอปไม่สำเร็จเท่านั้น */
         .open-app {
             position: fixed;
             right: 14px;
@@ -110,11 +112,29 @@
             font-size: 0.8125rem;
             text-decoration: none;
             box-shadow: 0 6px 18px rgba(26, 122, 68, 0.28);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(6px);
+            transition: opacity 0.24s ease, transform 0.24s ease, visibility 0s linear 0.24s;
+        }
+
+        .open-app.is-shown {
+            opacity: 1;
+            visibility: visible;
+            transform: none;
+            transition: opacity 0.24s ease, transform 0.24s ease, visibility 0s linear 0s;
         }
 
         .open-app:hover,
         .open-app:focus-visible {
             background: #155f34;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .open-app {
+                transition: none;
+                transform: none;
+            }
         }
     </style>
 </head>
@@ -141,6 +161,8 @@
             var openApp = document.getElementById('openApp');
             var appUrl = frame.getAttribute('data-app-url');
 
+            var loaded = false;
+
             /* ให้ iframe + ปุ่ม "เปิดในแท็บใหม่" ใช้ URL เดียวกันเสมอ
                (แก้ที่ data-app-url จุดเดียวพอ) */
             frame.src = appUrl;
@@ -150,13 +172,42 @@
                 splash.classList.add('is-hidden');
             }
 
+            /* โชว์ปุ่มทางออกเฉพาะตอนจำเป็น ไม่ให้ลอยบังแอปในกรณีปกติ */
+            function showFallback() {
+                openApp.classList.add('is-shown');
+            }
+
             frame.addEventListener('load', function () {
+                loaded = true;
                 window.setTimeout(hideSplash, 150);
+
+                /* ตัวเว็บแอปของ Apps Script จะสร้าง frame ย่อยของตัวเอง 1 ชั้น
+                   ถ้าโหลดเสร็จแล้วยังไม่มี frame ย่อย = Google ไม่ยอมให้ฝัง/ได้หน้า error
+                   จึงค่อยโชว์ปุ่ม (หน่วงนิดหนึ่งให้ wrapper สร้าง frame เสร็จก่อน) */
+                window.setTimeout(function () {
+                    var inner = 1;
+
+                    try {
+                        inner = frame.contentWindow.length;
+                    } catch (e) {
+                        inner = 0;
+                    }
+
+                    if (!inner) {
+                        showFallback();
+                    }
+                }, 1200);
             });
 
             /* กันเหนียว: Google บล็อกการฝังหรือเน็ตช้า ก็ไม่ค้างอยู่ที่หน้าโหลด
                (ถ้าจอว่าง ผู้ใช้ยังกด "เปิดในแท็บใหม่" ได้) */
-            window.setTimeout(hideSplash, 8000);
+            window.setTimeout(function () {
+                hideSplash();
+
+                if (!loaded) {
+                    showFallback();
+                }
+            }, 8000);
         })();
     </script>
 </body>
