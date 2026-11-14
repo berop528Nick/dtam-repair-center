@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwgiu4bz">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgj5mro">
     <style>
         /* ---------- โมดัลจัดการใบแจ้ง ---------- */
         .edit-overlay {
@@ -309,7 +309,10 @@
                 <span>แจ้งปัญหา</span>
             </a>
 
-            <a href="login.html?page=login" class="nav-link nav-link--button nav-link--logout" data-page="logout">
+            <!-- data-no-nav : ปุ่มนี้ให้ signOut() พาไป login เองหลังลบ session เสร็จ
+                 ถ้า NavJS สลับหน้าตัดหน้า (ตอน token เก่ายังไม่ตาย) จะแข่งกับ
+                 leave() แล้วจอค้างอยู่หน้าเดิมทั้งที่ออกจากระบบแล้ว -->
+            <a href="login.html?page=login" class="nav-link nav-link--button nav-link--logout" data-page="logout" data-no-nav>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                     <path d="M16 17l5-5-5-5" />
@@ -529,7 +532,7 @@
     </div>
 </div>
 
-<script src="assets/app.js?v=mwgiu4bz"></script>
+<script src="assets/app.js?v=mwgj5mro"></script>
 
 <script>
     window.PAGE_ID = new URLSearchParams(window.location.search).get('scope') === 'mine'
@@ -2600,12 +2603,18 @@
             nav.busy = false;
 
             /* กดเมนูอื่นค้างไว้ระหว่างดึงข้อมูล : ข้ามหน้านี้ไปหน้าล่าสุดเลย
-               (สลับหน้านี้ก่อนแล้วค่อยสลับอีกที = เห็นเนื้อหากระพริบสองรอบ) */
+               (สลับหน้านี้ก่อนแล้วค่อยสลับอีกที = เห็นเนื้อหากระพริบสองรอบ)
+               แต่ถ้าหน้าที่ค้างไว้คือหน้านี้เอง (เช่น ผล logout มาถึงก่อน
+               หน้า login ที่ดึงค้างไว้ หรือกดเมนูเดิมซ้ำระหว่างรอ)
+               อย่าข้ามการสลับ — ไม่งั้นจอค้างหน้าเดิมทั้งที่จำว่าเป็นหน้าใหม่แล้ว */
             if (nav.pending) {
                 var next = nav.pending;
                 nav.pending = '';
-                go(next, true);
-                return;
+
+                if (navKey(new URL(next)) !== navKey(url)) {
+                    go(next, true);
+                    return;
+                }
             }
 
             if (hold > 0) {

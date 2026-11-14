@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwgiu4bz">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgj5mro">
     <style>
         /* ---------- หน้าติดตามสถานะ (สาธารณะ) ---------- */
 
@@ -1841,12 +1841,18 @@
             nav.busy = false;
 
             /* กดเมนูอื่นค้างไว้ระหว่างดึงข้อมูล : ข้ามหน้านี้ไปหน้าล่าสุดเลย
-               (สลับหน้านี้ก่อนแล้วค่อยสลับอีกที = เห็นเนื้อหากระพริบสองรอบ) */
+               (สลับหน้านี้ก่อนแล้วค่อยสลับอีกที = เห็นเนื้อหากระพริบสองรอบ)
+               แต่ถ้าหน้าที่ค้างไว้คือหน้านี้เอง (เช่น ผล logout มาถึงก่อน
+               หน้า login ที่ดึงค้างไว้ หรือกดเมนูเดิมซ้ำระหว่างรอ)
+               อย่าข้ามการสลับ — ไม่งั้นจอค้างหน้าเดิมทั้งที่จำว่าเป็นหน้าใหม่แล้ว */
             if (nav.pending) {
                 var next = nav.pending;
                 nav.pending = '';
-                go(next, true);
-                return;
+
+                if (navKey(new URL(next)) !== navKey(url)) {
+                    go(next, true);
+                    return;
+                }
             }
 
             if (hold > 0) {

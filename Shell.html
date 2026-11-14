@@ -232,7 +232,10 @@
                 <span>แจ้งปัญหา</span>
             </a>
 
-            <a href="?page=login" class="nav-link nav-link--button nav-link--logout" data-page="logout">
+            <!-- data-no-nav : ปุ่มนี้ให้ signOut() พาไป login เองหลังลบ session เสร็จ
+                 ถ้า NavJS สลับหน้าตัดหน้า (ตอน token เก่ายังไม่ตาย) จะแข่งกับ
+                 leave() แล้วจอค้างอยู่หน้าเดิมทั้งที่ออกจากระบบแล้ว -->
+            <a href="?page=login" class="nav-link nav-link--button nav-link--logout" data-page="logout" data-no-nav>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
                     <path d="M16 17l5-5-5-5" />
