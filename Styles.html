@@ -1968,6 +1968,79 @@
         background: #8e9aa3;
     }
 
+    /* ---------- แท็กกรองสถานะบนตาราง (หน้าแรก) ----------
+       กดแท็ก = กรองตารางทันที ใช้ตัวกรองเดียวกับการ์ดสรุป (ซิงก์กันสองทาง)
+       แท็กที่เลือกจะเติมสีเดียวกับป้ายสถานะในตาราง */
+    .table-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 5px 13px;
+        font-family: inherit;
+        font-size: 0.78rem;
+        color: #43565f;
+        background: #f1f5f8;
+        border: 1px solid #dbe3e9;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .tag:hover {
+        border-color: #9db8c6;
+    }
+
+    .tag:focus-visible {
+        outline: 2px solid var(--brand-green);
+        outline-offset: 2px;
+    }
+
+    .tag-count {
+        min-width: 1.7em;
+        padding: 1px 7px;
+        font-size: 0.72rem;
+        text-align: center;
+        background: rgba(40, 65, 77, 0.1);
+        border-radius: 999px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .tag.is-active {
+        color: #fff;
+        border-color: transparent;
+    }
+
+    .tag.is-active .tag-count {
+        background: rgba(255, 255, 255, 0.28);
+    }
+
+    .tag[data-tag=""].is-active {
+        background: var(--brand-green);
+    }
+
+    .tag--pending.is-active {
+        background: #f0ad4e;
+    }
+
+    .tag--progress.is-active {
+        background: #1e88e5;
+    }
+
+    .tag--done.is-active {
+        background: #28a745;
+    }
+
+    .tag--cancel.is-active {
+        background: #8e9aa3;
+    }
+
     .btn-edit {
         display: inline-flex;
         align-items: center;

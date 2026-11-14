@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwgedixz">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgeja1k">
     <style>
         /* ---------- โมดัลจัดการใบแจ้ง ---------- */
         .edit-overlay {
@@ -421,6 +421,18 @@
         </section>
 
         <section class="table-card">
+            <div class="table-tags" id="tableTags" role="group" aria-label="กรองตารางตามสถานะ">
+                <button type="button" class="tag is-active" data-tag="" aria-pressed="true">ทั้งหมด
+                    <span class="tag-count" data-tag-count="all">…</span></button>
+                <button type="button" class="tag tag--pending" data-tag="รอดำเนินการ" aria-pressed="false">รอดำเนินการ
+                    <span class="tag-count" data-tag-count="pending">…</span></button>
+                <button type="button" class="tag tag--progress" data-tag="กำลังดำเนินการ" aria-pressed="false">กำลังดำเนินการ
+                    <span class="tag-count" data-tag-count="progress">…</span></button>
+                <button type="button" class="tag tag--done" data-tag="เสร็จสิ้น" aria-pressed="false">เสร็จสิ้น
+                    <span class="tag-count" data-tag-count="done">…</span></button>
+                <button type="button" class="tag tag--cancel" data-tag="ยกเลิก" aria-pressed="false">ยกเลิก
+                    <span class="tag-count" data-tag-count="cancel">…</span></button>
+            </div>
             <div class="table-toolbar">
                 <div class="toolbar-left">
                     <div class="entries">
@@ -524,7 +536,7 @@
     </div>
 </div>
 
-<script src="assets/app.js?v=mwgedixz"></script>
+<script src="assets/app.js?v=mwgeja1k"></script>
 
 <script>
     window.PAGE_ID = new URLSearchParams(window.location.search).get('scope') === 'mine'
@@ -1239,6 +1251,13 @@
             setStat('month', monthRows);
             setSub('month', 'เสร็จแล้ว ' + formatNumber(monthDone) + ' งาน');
 
+            /* จำนวนบนแท็ก : นับตามช่วงวันที่เดียวกับสรุป */
+            setTagCount('all', rows.length);
+            setTagCount('pending', pending);
+            setTagCount('progress', progress);
+            setTagCount('done', done);
+            setTagCount('cancel', cancel);
+
             if (summaryNodes.monthName) {
                 summaryNodes.monthName.textContent =
                     MONTHS_SHORT[now.getMonth()] + ' ' + (now.getFullYear() + 543);
@@ -1361,16 +1380,51 @@
             });
         }
 
+        /* ตัวกรองสถานะตัวเดียว : ใช้ร่วมกันทั้งการ์ดสรุปและแท็กบนตาราง
+           กดที่ไหนอีกฝั่งก็ขยับตาม (กดซ้ำ = ล้างตัวกรอง) */
+        function setStatusFilter(status) {
+            activeStatus = activeStatus === status ? '' : status;
+
+            var cardKey = '';
+            Object.keys(STATUS_BY_CARD).forEach(function (key) {
+                if (STATUS_BY_CARD[key] === activeStatus) {
+                    cardKey = key;
+                }
+            });
+            markStatus(cardKey);
+            markTags();
+
+            tableApi.setFilter(activeStatus
+                ? function (row) { return row.status === activeStatus; }
+                : null);
+            renderSummary();
+        }
+
+        function markTags() {
+            Array.prototype.forEach.call(
+                document.querySelectorAll('#tableTags .tag'),
+                function (tag) {
+                    var on = tag.dataset.tag === activeStatus;
+                    tag.classList.toggle('is-active', on);
+                    tag.setAttribute('aria-pressed', on ? 'true' : 'false');
+                }
+            );
+        }
+
+        function setTagCount(key, value) {
+            var node = document.querySelector('[data-tag-count="' + key + '"]');
+            if (node) {
+                node.textContent = formatNumber(value);
+            }
+        }
+
         Array.prototype.forEach.call(document.querySelectorAll('[data-card]'), function (card) {
             card.addEventListener('click', function () {
                 var key = card.dataset.card;
 
                 /* การ์ด "รายการทั้งหมด" = ล้างตัวกรองสถานะ */
                 if (key === 'all') {
-                    activeStatus = '';
-                    markStatus('');
-                    tableApi.setFilter(null);
-                    renderSummary();
+                    setStatusFilter('');
                     return;
                 }
 
@@ -1380,15 +1434,19 @@
                     return;
                 }
 
-                var status = STATUS_BY_CARD[key];
-                activeStatus = activeStatus === status ? '' : status;
-                markStatus(activeStatus ? key : '');
-                tableApi.setFilter(activeStatus
-                    ? function (row) { return row.status === activeStatus; }
-                    : null);
-                renderSummary();
+                setStatusFilter(STATUS_BY_CARD[key]);
             });
         });
+
+        /* แท็กบนตารางใช้ตัวกรองตัวเดียวกับการ์ด (กดแท็ก = การ์ดขยับตาม) */
+        Array.prototype.forEach.call(
+            document.querySelectorAll('#tableTags .tag'),
+            function (tag) {
+                tag.addEventListener('click', function () {
+                    setStatusFilter(tag.dataset.tag);
+                });
+            }
+        );
 
         var filterForm = document.getElementById('filterForm');
         if (filterForm) {
