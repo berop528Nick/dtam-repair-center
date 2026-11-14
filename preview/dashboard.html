@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwge6huy">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgedixz">
     <style>
         /* ---------- โมดัลจัดการใบแจ้ง ---------- */
         .edit-overlay {
@@ -524,7 +524,7 @@
     </div>
 </div>
 
-<script src="assets/app.js?v=mwge6huy"></script>
+<script src="assets/app.js?v=mwgedixz"></script>
 
 <script>
     window.PAGE_ID = new URLSearchParams(window.location.search).get('scope') === 'mine'
@@ -796,6 +796,8 @@
         var summarySec = document.getElementById('summary');
         if (summarySec) {
             summarySec.classList.remove('is-loading-sec');
+            /* ลูกเล่นการ์ดสรุป : เติมหลังข้อมูลมา แถวการ์ดจะขึ้นทีละใบ */
+            summarySec.classList.add('is-arrived');
         }
 
         /* กรองเฉพาะงานที่มอบหมายให้ผู้ใช้ที่ล็อกอิน (ใช้ในเมนู "งานของฉัน") */
@@ -877,6 +879,17 @@
         var tableCard = document.querySelector('.table-card');
         if (tableCard) {
             tableCard.removeAttribute('aria-busy');
+        }
+
+        /* ลูกเล่นแถวตาราง : เติมคลาสหลังวาดแถวครั้งแรก แถวจะลอยขึ้นทีละแถว
+           แล้วถอดออกหลังเล่นจบ การเรนเดอร์รอบหลัง (ค้นหา/แบ่งหน้า/กรอง)
+           จะได้ไม่เต้นทุกครั้ง */
+        var freshBody = document.getElementById('tableBody');
+        if (freshBody) {
+            freshBody.classList.add('is-fresh');
+            window.setTimeout(function () {
+                freshBody.classList.remove('is-fresh');
+            }, 900);
         }
 
         /* ---------- โมดัลจัดการใบแจ้ง (เปลี่ยนสถานะ/มอบหมาย/ปิดงาน) ---------- */
