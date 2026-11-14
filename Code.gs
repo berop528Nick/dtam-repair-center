@@ -1047,7 +1047,8 @@ function getEquipmentItems(token) {
 
 const DEMO = {
   seed: 20261112,
-  rowCount: 1000,
+  /* สร้าง 1999 ใบ + ใบอ้างอิง RQ2611-0001 อีก 1 ใบ = ลงชีต 2000 ใบพอดี */
+  rowCount: 1999,
   names: [
     'พีรวิชญ์ นวลทอง', 'สมชาย ใจดี', 'ปวีณา สุขศรี', 'อรุณี พรหมมา', 'นภาพร วงศ์ทอง',
     'วีระชัย ศรีสมบัติ', 'กนกวรรณ ใจงาม', 'ธนากร พูลผล', 'มณีรัตน์ ทองดี', 'ศิริชัย บุญมา',
@@ -1165,7 +1166,12 @@ function demoTicketObjects_() {
   const list = [];
 
   for (let i = 0; i < DEMO.rowCount; i += 1) {
-    const status = randomStatus();
+    /* สุ่มเฉพาะสถานะที่ปิดการสุ่ม "รอดำเนินการ" ออก — ใบรอดำเนินการ
+       จะบังคับให้มีexactly 5 ใบหลังหัก patch ด้านล่าง */
+    let status = randomStatus();
+    if (status === 'รอดำเนินการ') {
+      status = pick(['เสร็จสิ้น', 'กำลังดำเนินการ', 'ยกเลิก']);
+    }
     const reportedAt = new Date(start + random() * spanMs);
     let closedAt = '';
 
@@ -1260,6 +1266,27 @@ function demoTicketObjects_() {
       ticket[key] = patch[key];
     });
   });
+
+  /* บังคับให้มีใบ "รอดำเนินการ" รวม 5 ใบพอดี
+     (ใบนึงคือ patch 2803 ที่เป็นรอดำเนินการอยู่แล้ว + อีก 4 ใบเลือกจากเลขที่ไม่ใช่ patch
+     ตั้งวันแจ้งให้อยู่ในช่วงล่าสุดเพื่อทดสอบง่าย) */
+  ['J110969C04S20N2771', 'J110969C04S20N3000', 'J110969C04S20N3500', 'J110969C04S20N4000']
+    .forEach(function (no, k) {
+      const found = list.filter(function (ticket) {
+        return ticket.no === no;
+      })[0];
+
+      if (!found) {
+        return;
+      }
+
+      found.status = 'รอดำเนินการ';
+      found.owner = '';
+      found.ownerEmail = '';
+      found.assignedAt = '';
+      found.closedAt = '';
+      found.reportedAt = new Date(2026, 10, 10 + k, 9 + k, 15, 0);
+    });
 
   /* ใบรูปแบบ RQ (เลขที่ที่ submitForm สร้าง) ใช้เป็นตัวอย่างหน้าแรก */
   list.push({
