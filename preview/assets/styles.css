@@ -2040,6 +2040,50 @@
         background: #8e9aa3;
     }
 
+    /* ---------- รูปแนบในตาราง (หน้าแรก) ---------- */
+    .col-photo {
+        width: 58px;
+    }
+
+    .photo-thumb {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 33px;
+        overflow: hidden;
+        vertical-align: middle;
+        background: #eef3f6;
+        border-radius: 6px;
+    }
+
+    .photo-thumb img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .photo-thumb:hover {
+        outline: 2px solid var(--brand-green);
+        outline-offset: 1px;
+    }
+
+    .photo-count {
+        position: absolute;
+        right: 2px;
+        bottom: 2px;
+        padding: 0 5px;
+        font-size: 0.62rem;
+        line-height: 1.5;
+        color: #fff;
+        background: rgba(20, 35, 45, 0.72);
+        border-radius: 999px;
+    }
+
+    .no-photo {
+        color: #c3ccd2;
+    }
+
     .btn-edit {
         display: inline-flex;
         align-items: center;

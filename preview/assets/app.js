@@ -72,6 +72,24 @@
             return '<span class="status status--' + cls + '">' + esc(text || '—') + '</span>';
         }
 
+        /* รูปแนบในตาราง : โชว์รูปแรกเป็นภาพเล็ก + ป้ายจำนวนรูปที่เหลือ
+           (กดแล้วเปิดรูปต้นฉบับในแท็บใหม่ — รูปแบบเดียวกับหน้าติดตามสถานะ) */
+        function photoCell(photos) {
+            var list = (photos || []).filter(function (url) {
+                return !!url;
+            });
+            if (!list.length) {
+                return '<span class="no-photo">—</span>';
+            }
+            var first = esc(list[0]);
+            var extra = list.length > 1
+                ? '<span class="photo-count">+' + (list.length - 1) + '</span>'
+                : '';
+            return '<a class="photo-thumb" href="' + first + '" target="_blank" rel="noopener"' +
+                ' title="เปิดดูรูปแนบ (' + list.length + ' รูป)">' +
+                '<img src="' + first + '" alt="รูปแนบ" loading="lazy">' + extra + '</a>';
+        }
+
         /* ---------- ปฏิทินไทย (แสดง พ.ศ.) ---------- */
 
         var THAI_WEEKDAYS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
@@ -1398,6 +1416,7 @@
             thaiTime: thaiTime,
             dateCell: dateCell,
             statusBadge: statusBadge,
+            photoCell: photoCell,
             dialog: dialog,
             initShell: initShell,
             dateValue: dateValue,

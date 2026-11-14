@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwgeja1k">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgetm8t">
     <style>
         /* ---------- โมดัลจัดการใบแจ้ง ---------- */
         .edit-overlay {
@@ -464,6 +464,7 @@
                             <th data-sort="no">เลขที่ใบแจ้งปัญหา</th>
                             <th data-sort="equipCode">เลขครุภัณฑ์</th>
                             <th data-sort="equipment">ครุภัณฑ์/พัสดุ</th>
+                        <th class="col-photo">รูป</th>
                             <th data-sort="reporter">ผู้แจ้ง</th>
                             <th data-sort="department">หน่วยงาน</th>
                             <th data-sort="reportedAt">วันที่แจ้ง</th>
@@ -536,7 +537,7 @@
     </div>
 </div>
 
-<script src="assets/app.js?v=mwgeja1k"></script>
+<script src="assets/app.js?v=mwgetm8t"></script>
 
 <script>
     window.PAGE_ID = new URLSearchParams(window.location.search).get('scope') === 'mine'
@@ -702,7 +703,19 @@
                     owner: status === 'รอดำเนินการ' ? '' : owner.name,
                     ownerEmail: status === 'รอดำเนินการ' ? '' : owner.email,
                     closedAt: closedAt,
-                    status: status
+                    status: status,
+                    /* รูปตัวอย่าง (picsum) — ใช้แค่เลขลำดับ ไม่กินคิวสุ่ม
+                       ข้อมูลอื่นจึงเหมือนเดิมทุกประการ */
+                    photos: (function () {
+                        if (i % 9 === 0) {
+                            return ['https://picsum.photos/seed/dtam' + (2766 + i) + 'a/160/120',
+                                'https://picsum.photos/seed/dtam' + (2766 + i) + 'b/160/120'];
+                        }
+                        if (i % 3 === 0) {
+                            return ['https://picsum.photos/seed/dtam' + (2766 + i) + '/160/120'];
+                        }
+                        return [];
+                    })()
                 });
             }
 
@@ -715,7 +728,7 @@
         function showSkeletons() {
             var body = document.getElementById('tableBody');
             if (body && !body.rows.length) {
-                var widths = [10, 26, 20, 16, 12, 14, 14, 12, 14, 12, 8];
+                var widths = [8, 24, 18, 14, 60, 12, 12, 12, 10, 12, 10, 6];
                 var html = '';
                 for (var r = 0; r < 7; r += 1) {
                     html += '<tr class="skel-row" aria-hidden="true">';
@@ -835,6 +848,12 @@
                 label: 'ครุภัณฑ์/พัสดุ',
                 render: function (row) { return App.esc(row.equipment || row.category || '—'); },
                 text: function (row) { return row.equipment || row.category || ''; }
+            },
+            {
+                key: 'photos',
+                label: 'รูป',
+                render: function (row) { return App.photoCell(row.photos); },
+                text: function () { return ''; }
             },
             { key: 'reporter', label: 'ผู้แจ้ง' },
             { key: 'department', label: 'หน่วยงาน' },

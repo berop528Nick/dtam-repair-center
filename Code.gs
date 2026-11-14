@@ -1212,6 +1212,20 @@ function demoTicketObjects_() {
       ownerEmail: status === 'รอดำเนินการ' ? '' : owner.email,
       assignedAt: assigned,
       closedAt: closedAt,
+      /* รูปตัวอย่าง (picsum) ประมาณ 1 ใน 3 ใบ — ให้เห็นคอลัมน์รูปในตาราง
+         ล้างทิ้งพร้อมข้อมูลตัวอย่างอื่นก่อนเปิดใช้จริง */
+      photoUrls: (function () {
+        if (i % 9 === 0) {
+          return [
+            'https://picsum.photos/seed/dtam' + (2766 + i) + 'a/400/300',
+            'https://picsum.photos/seed/dtam' + (2766 + i) + 'b/400/300',
+          ];
+        }
+        if (i % 3 === 0) {
+          return ['https://picsum.photos/seed/dtam' + (2766 + i) + '/400/300'];
+        }
+        return [];
+      })(),
     });
   }
 
@@ -1228,6 +1242,7 @@ function demoTicketObjects_() {
       status: 'เสร็จสิ้น',
       assignedAt: new Date('2026-09-12T09:00:00'),
       closedAt: new Date('2026-09-17T09:16:43'),
+      photoUrls: ['https://picsum.photos/seed/dtam2766/400/300'],
     },
     J110969C04S20N2784: {
       reportedAt: new Date('2026-10-21T13:45:30'),
@@ -1240,6 +1255,7 @@ function demoTicketObjects_() {
       status: 'กำลังดำเนินการ',
       assignedAt: new Date('2026-10-22T09:10:00'),
       closedAt: '',
+      photoUrls: ['https://picsum.photos/seed/dtam2784/400/300'],
     },
     J110969C04S20N2803: {
       reportedAt: new Date('2026-11-05T15:22:41'),
@@ -1250,6 +1266,7 @@ function demoTicketObjects_() {
       owner: '', ownerEmail: '',
       detail: 'อินเทอร์เน็ตห้อง IT หลุดบ่อย',
       status: 'รอดำเนินการ',
+      photoUrls: ['https://picsum.photos/seed/dtam2803/400/300'],
       assignedAt: '',
       closedAt: '',
     },
@@ -1305,6 +1322,7 @@ function demoTicketObjects_() {
     ownerEmail: 'building@example.ac.th',
     assignedAt: new Date('2026-11-10T11:20:00'),
     closedAt: '',
+    photoUrls: ['https://picsum.photos/seed/dtamRQ2611/400/300'],
   });
 
   list.sort(function (a, b) {
@@ -1346,6 +1364,9 @@ function ticketToRow_(ticket) {
   put('วันที่ปิดงาน', ticket.closedAt || '');
   put('อีเมลผู้รับผิดชอบ', ticket.ownerEmail || '');
   put('วันที่มอบหมาย', ticket.assignedAt || '');
+  put('รูปภาพ', (ticket.photoUrls || [])[0] || '');
+  put('รูปเพิ่มเติม 2', (ticket.photoUrls || [])[1] || '');
+  put('รูปเพิ่มเติม 3', (ticket.photoUrls || [])[2] || '');
 
   return row;
 }
