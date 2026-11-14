@@ -29,6 +29,15 @@
             ติดตามสถานะ
         </a>
         <span class="divider" aria-hidden="true"></span>
+        <!-- ทางกลับหน้าแรกสำหรับเจ้าหน้าที่ (กันติดอยู่หน้าสาธารณะแล้วหาทางกลับไม่เจอ)
+             โชว์เฉพาะตอนล็อกอินอยู่ — ดูสคริปต์ท้ายไฟล์ -->
+        <a href="?page=dashboard" data-page="dashboard" id="navDashboard" style="display:none">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 10.5 12 3l9 7.5" />
+                <path d="M5 10v10h14V10" />
+            </svg>
+            หน้าแรก
+        </a>
         <a class="btn-login" href="?page=login">
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="8" r="4" />
@@ -54,6 +63,17 @@
 
         markHeaderHeight();
         window.addEventListener('resize', markHeaderHeight);
+    })();
+</script>
+<script>
+    /* เจ้าหน้าที่ที่ล็อกอินอยู่ เห็นทางกลับหน้าแรกด้วย (กันติดอยู่หน้าสาธารณะ
+       แล้วหาทางกลับไม่เจอ — เมนูแจ้งปัญหาตอนอยู่หน้าฟอร์มจะดูเหมือนกดไม่ติด) */
+    (function () {
+        try {
+            if (!window.__DTAM_TOKEN) return;
+            var link = document.getElementById('navDashboard');
+            if (link) link.style.display = '';
+        } catch (e) { }
     })();
 </script>
 <script>
