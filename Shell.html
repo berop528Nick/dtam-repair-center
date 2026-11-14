@@ -77,31 +77,10 @@
             fromNav = /[?&]nav=1(&|$)/.test(window.location.search);
         }
 
-        /* กดลิงก์ในแอป = กำลังจะเปลี่ยนหน้า : เติม nav=1 ให้หน้าถัดไปรู้
-           ต้องลงทะเบียนทุกครั้ง แม้หน้านี้จะมาจากเมนูแล้ว ไม่งั้นคลิกถัดไปจะไม่ถูกจำ */
-        document.addEventListener('click', function (event) {
-            if (event.button !== 0 || event.metaKey || event.ctrlKey ||
-                event.shiftKey || event.altKey) {
-                return;
-            }
-
-            var link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
-            if (!link || link.target === '_blank' || link.hasAttribute('download')) {
-                return;
-            }
-
-            try {
-                var next = new URL(link.href, window.location.href);
-
-                /* ลิงก์นอกเว็บ (เช่น เมนูของ Google) ไม่ต้องเติม */
-                if (next.origin !== window.location.origin) {
-                    return;
-                }
-
-                next.searchParams.set(NAV_PARAM, '1');
-                link.href = next.href;
-            } catch (e) { }
-        }, true);
+        /* ยกเลิกตัวเติม nav=1 : NavJS สลับหน้าในที่เดียวเองแล้ว (ดู NavJS.html)
+           ถ้าปล่อยไว้ ทุกครั้งที่โหลดใหม่แบบเต็มหน้า (หรือเปิดลิงก์แท็บใหม่)
+           จะทิ้ง ?nav=1 ค้างใน URL โดยไม่จำเป็น — ตัวอ่าน/เก็บกวาดค่ายังอยู่ด้านบน
+           เอาไว้รองรับลิงก์เก่าที่มี nav=1 ติดมา */
 
         /* เฟดออกก่อนเปลี่ยนหน้าแบบโหลดใหม่ทั้งหน้า
            - ถ้าตัวอื่นจัดการคลิกไปแล้ว (NavJS / ปุ่มเจ้าหน้าที่เข้าระบบ) จะมี defaultPrevented
