@@ -63,8 +63,8 @@ clasp deploy -i YOUR_DEPLOYMENT_ID -d "v2"
 1. เปิดโปรเจกต์: https://script.google.com/home/projects/1FBzzbDvFCCKM3rnfPyTesCoEbOxDk-uwib2CQZM2hmLQZbcF42IyJ62K/edit
 2. วางเนื้อหา `Code.gs` ทั้งไฟล์ลงในไฟล์ `Code.gs`
 3. เปิด `Project Settings` > ติ๊ก **Show "appsscript.json" manifest file in editor** แล้ววางเนื้อหา `appsscript.json`
-4. กด `+` > HTML สร้างไฟล์ชื่อตรงกับตารางด้านบนให้ครบ 11 ไฟล์
-   (`Repair`, `Track`, `Login`, `Dashboard`, `Equipment`, `Brand`, `PubHead`, `Shell`, `Styles`, `AppJS`, `Dialog`)
+4. กด `+` > HTML สร้างไฟล์ชื่อตรงกับตารางด้านบนให้ครบ 12 ไฟล์
+   (`Repair`, `Track`, `Login`, `Dashboard`, `Equipment`, `Brand`, `PubHead`, `Shell`, `Styles`, `AppJS`, `NavJS`, `Dialog`)
    แล้ววางเนื้อหาของแต่ละไฟล์ตามชื่อ — ชื่อไฟล์ต้องตรงตัวพิมพ์เล็ก/ใหญ่ เพราะ `include()` อ้างตามชื่อ
 5. ตั้งค่าใน `CONFIG` (ต้นไฟล์ `Code.gs`)
    - `SPREADSHEET_ID` — ถ้าไม่ผูกสคริปต์กับชีต ให้สร้างชีตใหม่แล้วเอาไอดีจาก URL มาใส่
@@ -79,6 +79,25 @@ clasp deploy -i YOUR_DEPLOYMENT_ID -d "v2"
    - Who has access: **Anyone** (ให้ผู้แจ้งทั่วไปเปิดได้โดยไม่ต้องล็อกอิน)
      หรือ **Anyone with Google account** ถ้าต้องการจำกัดเฉพาะในองค์กร
 8. คัดลอก Web app URL ไปใช้งาน/แปะใน Google Sites หรือ LINE
+
+## ขึ้น Google Sheet ใหม่ (ย้ายระบบไปชีตอื่น)
+
+1. สร้างสเปรดชีตใหม่ (บัญชีเดียวกับเจ้าของสคริปต์) แล้วคัดลอกไอดีจาก URL
+   (`https://docs.google.com/spreadsheets/d/<SPREADSHEET_ID>/edit`)
+2. ใส่ไอดีใน `CONFIG.SPREADSHEET_ID` ต้นไฟล์ `Code.gs` แล้ว `clasp push`
+   (หรือแก้ใน editor แล้ว Deploy เวอร์ชันใหม่)
+3. หน้า editor เลือกฟังก์ชัน **`setupAll`** แล้วกด Run (ครั้งแรกกด **Allow**)
+   ฟังก์ชันเดียวสร้างให้ครบ: ชีต `แจ้งซ่อม` + หัวตาราง 24 คอลัมน์, ชีต `ครุภัณฑ์`,
+   ชีต `Users` (+ บัญชี `admin` ตั้งต้น), โฟลเดอร์รูปใน Drive — ผลลัพธ์อยู่ใน Execution log
+4. ตั้งรหัสผ่านจริงทันที: `setUserPassword("admin", "รหัสผ่านใหม่", "ชื่อที่แสดง", "admin")`
+   (ห้ามใช้ `admin/admin1234` ขึ้น production) แล้วเพิ่มเจ้าหน้าที่คนอื่นด้วยฟังก์ชันเดียวกัน
+5. ถ้าต้องการข้อมูลทดสอบ: รัน `seedDemoData()` (1,000 ใบ + ครุภัณฑ์ 8 รายการ +
+   เบอร์โทร/ไลน์สมมติสำหรับทดสอบค้นหา) — ล้างด้วย `seedDemoData(true)` ก่อนเปิดใช้จริง
+6. รัน `testSetup` ตรวจท้าย (ชีต/โฟลเดอร์/อีเมล/LINE) แล้ว Deploy เวอร์ชันใหม่
+
+> ย้ายชีตแล้วเลขที่ใบแจ้งเริ่มนับ `RQ<ปีเดือน>-0001` ใหม่
+> ถ้าชีตปลายทางมีข้อมูล/หัวตารางเดิมที่ไม่ตรง สคริปต์จะหยุดพร้อมข้อความบอก
+> ให้เปลี่ยนชื่อชีตหรือล้างแถวแรกก่อน (กันข้อมูลเพี้ยนแบบเงียบ ๆ)
 
 ## ปรับปรุงหน้าเว็บในเครื่อง (โฟลเดอร์ `preview/`)
 
@@ -195,14 +214,13 @@ node tools/preview.mjs --force   # สร้างใหม่จาก template
 เมนูข้าง/นาฬิกา/กล่องแจ้งเตือน, แนบรูปได้ 3 ภาพพร้อมพรีวิว, ส่งออก CSV และพิมพ์ PDF,
 ปฏิทินไทย (พ.ศ.) ที่ใช้ร่วมกัน, สถานะกำลังโหลดหน้าและแอนิเมชันเปลี่ยนหน้า (ดูหัวข้อก่อนหน้า)
 
-ยังเป็น **ข้อมูลตัวอย่าง**: `Dashboard.html` สร้าง 1,000 รายการจาก `buildTestRows()` (deterministic),
-`Equipment.html` และ `TICKETS` ใน `Track.html` — ขั้นถัดไปคืออ่าน/เขียนข้อมูลจริงกับ Google Sheet ผ่าน `google.script.run`
+ข้อมูลตัวอย่าง (`buildTestRows()`, `DEMO_ROWS`, `DEMO_TICKETS`) ใช้เฉพาะโหมด preview
+ไม่มีเซิร์ฟเวอร์ — บน Apps Script ทุกหน้าอ่าน/เขียนข้อมูลจริงกับ Google Sheet ผ่าน `google.script.run`
+(`submitForm`, `getTicket`, `getTickets`, `getEquipmentItems`, `updateTicket`)
 
-หน้า **งานของฉัน** (`?page=dashboard&scope=mine`) กรองตาม `ownerEmail` ของผู้ใช้ที่ล็อกอิน
-— ข้อมูลจริงต้องมีคอลัมน์อีเมลผู้รับผิดชอบในชีต (ดู `BACKLOG.md`)
+หน้า **งานของฉัน** (`?page=dashboard&scope=mine`) กรองตามชื่อผู้รับผิดชอบให้ตรงกับผู้ที่ล็อกอิน
 
-ยังไม่ทำ: ระบบล็อกอินจริง (ตรวจสิทธิ์), การเชื่อมฟอร์มกับ `submitForm()` ใน `Code.gs`,
-หน้ารายละเอียด/แก้ไขใบแจ้งปัญหา, และ backend ที่รับรูป 3 ภาพ (ตอนนี้ `submitForm` รับได้ 1 ไฟล์)
+ยังไม่ทำ: แยกสิทธิ์แอดมิน/เจ้าหน้าที่ตอนแก้ไขใบแจ้ง (ตอนนี้ผู้ล็อกอินทุกคนจัดการได้) — ดู `BACKLOG.md`
 
 ## หมายเหตุด้านความปลอดภัย
 

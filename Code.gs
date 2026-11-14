@@ -951,6 +951,12 @@ function equipmentSheet_() {
     });
 
   if (head[0]) {
+    if (head[0] !== EQUIP.HEADERS[0]) {
+      throw new Error(
+        'ชีต "' + EQUIP.SHEET_NAME + '" มีอยู่แล้วแต่หัวตารางไม่ใช่ "' + EQUIP.HEADERS[0] + '" ' +
+        'กรุณาเปลี่ยนชื่อชีตหรือล้างข้อมูลก่อนใช้งาน'
+      );
+    }
     return sheet;
   }
 
@@ -1157,6 +1163,9 @@ function demoTicketObjects_() {
       reportedAt: reportedAt,
       reporter: reporter,
       department: department,
+      /* เบอร์โทรสมมติแบบเดาได้ (ใช้ทดสอบค้นหาในหน้าติดตามสถานะ) */
+      phone: '081-555-' + pad(2766 + i, 4),
+      contactChannel: 'โทรศัพท์',
       equipment: equipment,
       equipCode: equipCode,
       category: '',
@@ -1176,6 +1185,7 @@ function demoTicketObjects_() {
     J110969C04S20N2766: {
       reportedAt: new Date('2026-09-11T08:38:16'),
       reporter: 'พีรวิชญ์ นวลทอง', department: 'ศพท.เขตสุขภาพที่ 1 จ.ลำปาง',
+      phone: '082-111-2233', contactChannel: 'โทรศัพท์',
       equipment: 'ระบบโทรศัพท์/สายสัญญาณ', equipCode: 'ไม่มีเลขครุภัณฑ์',
       location: 'อาคารศูนย์ฯ ชั้น 1 ห้อง IT',
       owner: 'ตระกูลศักดิ์ หุนประเสริฐ', ownerEmail: 'trakul@example.ac.th',
@@ -1187,6 +1197,7 @@ function demoTicketObjects_() {
     J110969C04S20N2784: {
       reportedAt: new Date('2026-10-21T13:45:30'),
       reporter: 'ปวีณา สุขศรี', department: 'ศพท.เขตสุขภาพที่ 5 จ.นครปฐม',
+      phone: '083-777-8899', contactChannel: 'โทรศัพท์',
       equipment: 'เครื่องพิมพ์เลเซอร์', equipCode: '7440-002-0015',
       location: 'อาคาร 2 ชั้น 1 ห้องการเงิน',
       owner: 'สมพงษ์ ช่างซ่อม', ownerEmail: 'sompong@example.ac.th',
@@ -1198,6 +1209,7 @@ function demoTicketObjects_() {
     J110969C04S20N2803: {
       reportedAt: new Date('2026-11-05T15:22:41'),
       reporter: 'พีรวิชญ์ นวลทอง', department: 'ศพท.เขตสุขภาพที่ 7 จ.ขอนแก่น',
+      phone: '', lineId: 'it-support', contactChannel: 'LINE',
       equipment: 'ระบบเครือข่าย/อินเทอร์เน็ต', equipCode: 'ไม่มีเลขครุภัณฑ์',
       location: 'อาคารศูนย์ฯ ชั้น 1 ห้อง IT',
       owner: '', ownerEmail: '',
@@ -1225,6 +1237,7 @@ function demoTicketObjects_() {
     no: 'RQ2611-0001',
     reportedAt: new Date('2026-11-10T08:57:03'),
     reporter: 'นภาพร วงศ์ทอง',      department: 'ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก',
+    phone: '081-234-5678', contactChannel: 'โทรศัพท์',
     equipment: 'เครื่องปรับอากาศ',
     equipCode: '7440-004-0021',
     category: 'ครุภัณฑ์สำนักงาน',
@@ -1270,6 +1283,8 @@ function ticketToRow_(ticket) {
   put('สถานที่', ticket.location || '');
   put('อาการเสีย/รายละเอียด', ticket.detail || '');
   put('ความเร่งด่วน', ticket.urgency || 'ปกติ');
+  put('ไอดีไลน์', ticket.lineId || '');
+  put('ช่องทางติดต่อกลับ', ticket.contactChannel || (ticket.lineId ? 'LINE' : 'โทรศัพท์'));
   put('สถานะ', ticket.status || STATUS_NEW);
   put('ผู้รับผิดชอบ', ticket.owner || '');
   put('วันที่ปิดงาน', ticket.closedAt || '');
@@ -1621,8 +1636,43 @@ function testSetup() {
 }
 
 /**
+ * เตรียมชีตใหม่ทั้งระบบในครั้งเดียว — ใช้ตอนขึ้น Google Sheet ใหม่
+ * วิธีใช้:
+ *   1) สร้างสเปรดชีตใหม่ (หรือใช้ชีตเดิมที่ว่าง)
+ *   2) ใส่ไอดีชีตใน CONFIG.SPREADSHEET_ID ด้านบน
+ *   3) หน้า editor เลือกฟังก์ชัน setupAll แล้วกด Run (ครั้งแรกกด Allow)
+ *   4) ตั้งรหัส admin: setUserPassword("admin", "รหัสผ่านใหม่", "ชื่อ", "admin")
+ *   5) ถ้าต้องการข้อมูลทดสอบ: รัน seedDemoData() แล้ว Deploy เวอร์ชันใหม่
+ * @return {string}
+ */
+function setupAll() {
+  const lines = ['=== เตรียม Google Sheet ใหม่ ==='];
+
+  lines.push('--- 1/3 ชีตใบแจ้งปัญหา + โฟลเดอร์รูป ---');
+  lines.push(setupSheet());
+
+  lines.push('--- 2/3 ชีตครุภัณฑ์ ---');
+  const equipSheet = equipmentSheet_();
+  lines.push(
+    'สร้าง/ตรวจชีตเรียบร้อย: ' + equipSheet.getParent().getName() + ' / ' + equipSheet.getName() +
+    ' (ครุภัณฑ์ ' + Math.max(0, equipSheet.getLastRow() - 1) + ' รายการ)'
+  );
+
+  lines.push('--- 3/3 ชีตบัญชีเจ้าหน้าที่ ---');
+  lines.push(setupAuth());
+
+  lines.push('ขั้นตอนถัดไป: setUserPassword("admin", "รหัสผ่านใหม่", "ชื่อ", "admin")');
+  lines.push('ถ้าต้องการข้อมูลทดสอบ: seedDemoData() — แล้ว Deploy เวอร์ชันใหม่ก่อนใช้งาน');
+
+  const msg = lines.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+/**
  * สร้างชีต + คอลัมน์ครบตาม HEADERS ให้อัตโนมัติ
  * วิธีใช้ : หน้า editor เลือกฟังก์ชัน setupSheet แล้วกด Run (ครั้งเดียว)
+ * (หรือรัน setupAll() เพื่อเตรียมทุกชีตพร้อมกัน)
  * @return {string}
  */
 function setupSheet() {
