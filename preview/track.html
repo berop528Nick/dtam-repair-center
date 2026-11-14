@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwggjrs9">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgh2wzv">
     <style>
         /* ---------- หน้าติดตามสถานะ (สาธารณะ) ---------- */
 
@@ -1340,7 +1340,7 @@
             return;
         }
 
-        var nav = window.__dtamNav = { busy: false, pending: '', timer: 0, waitTimer: 0, waitShownAt: 0, timeout: 0 };
+        var nav = window.__dtamNav = { busy: false, pending: '', timer: 0, waitTimer: 0, waitShownAt: 0, timeout: 0, current: '' };
 
         /* กันค้างเงียบ : เรียกเซิร์ฟเวอร์แล้วเงียบเกิน NAV_TIMEOUT_MS
            (เน็ตหลุด/เซิร์ฟเวอร์ค้าง/ตอบกลับไม่มา) ให้เลิกสลับในที่เดียว
@@ -1443,10 +1443,15 @@
             }
         }
 
-        /* อยู่หน้านี้อยู่แล้ว = ไม่ต้องทำอะไร (กันกดเมนูซ้ำแล้วโหลด/สลับใหม่) */
+        /* อยู่หน้านี้อยู่แล้ว = ไม่ต้องทำอะไร (กันกดเมนูซ้ำแล้วโหลด/สลับใหม่)
+           เทียบกับหน้าที่จำไว้ในหน่วยความจำก่อน (nav.current อัปเดตทุกครั้งที่สลับสำเร็จ)
+           แล้วค่อยเทียบกับ URL — เพราะบางเบราว์เซอร์/sandbox บล็อก pushState
+           ทำให้ URL ค้างเป็นหน้าเก่า (เช่น รีเฟรชแล้วกดเมนูแจ้งปัญหา​จากแดชบอร์ด
+           กลับถูกมองว่าอยู่หน้าฟอร์มแล้ว) ถ้าจำไว้เลยจะไม่หลงตาม URL ค้าง */
         function isSamePage(url) {
             try {
-                return navKey(url) === navKey(new URL(window.location.href));
+                var here = nav.current || navKey(new URL(window.location.href));
+                return navKey(url) === here;
             } catch (e) {
                 return false;
             }
@@ -1752,6 +1757,12 @@
             /* รอบนี้ได้คำตอบแล้ว — ยกเลิกตัวจับเวลากันค้าง */
             clearNavTimeout();
 
+            /* จำหน้านี้ไว้ในหน่วยความจำเลย ไม่พึ่ง URL อย่างเดียว
+               (pushState ด้านล่างอาจถูกบล็อกจน URL ค้างหน้าเก่า) */
+            try {
+                nav.current = navKey(url);
+            } catch (e) { }
+
             var root = document.documentElement;
 
             root.classList.add('is-nav');
@@ -1906,8 +1917,17 @@
                 return;
             }
 
-            /* กดเมนูของหน้าที่เปิดอยู่ : ไม่ต้องสลับ/โหลดใหม่ */
+            /* กดเมนูของหน้าที่เปิดอยู่ : ไม่ต้องสลับ/โหลดใหม่
+               แต่ขยับขึ้นบนสุดนิดหนึ่งให้รู้ว่ากดติด (ไม่งั้นดูเหมือนปุ่มเสีย
+               โดยเฉพาะกดเมนูแจ้งปัญหาตอนอยู่หน้าฟอร์มอยู่แล้ว) */
             if (isSamePage(url)) {
+                try {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } catch (e) {
+                    try {
+                        window.scrollTo(0, 0);
+                    } catch (e2) { }
+                }
                 return;
             }
 
