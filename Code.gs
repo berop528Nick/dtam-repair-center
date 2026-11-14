@@ -729,6 +729,7 @@ function rowToTicket_(row) {
     assignedAt: isoLocal_(cell_(row, 'วันที่มอบหมาย')),
     phone: String(cell_(row, 'เบอร์โทร') || '').trim(),
     lineId: String(cell_(row, 'ไอดีไลน์') || '').trim(),
+    email: String(cell_(row, 'อีเมล') || '').trim(),
     contactChannel: String(cell_(row, 'ช่องทางติดต่อกลับ') || '').trim(),
     note: String(cell_(row, 'หมายเหตุ') || '').trim(),
     photos: [
@@ -914,28 +915,30 @@ function normalizeNo_(raw) {
 function searchTickets_(rows, want, contactRaw) {
   const list = rows || [];
 
-  /* กรอกเลขที่ใบแจ้งมา (จะมีข้อมูลติดต่อด้วยหรือไม่ก็ได้) */
+  /* ช่องค้นเดียว: ถ้าตรงเลขที่ใบแจ้งใบไหน เปิดใบนั้นเลย (เลขสุ่มเดาไม่ได้)
+     ถ้าไม่ตรงเลขไหนเลย ถือว่าเป็นเบอร์โทร/ไอดีไลน์/อีเมล แล้วค้นต่อด้านล่าง */
   if (want) {
     const found = list.filter(function (ticket) {
       return normalizeNo_(ticket.no) === want;
     })[0];
 
-    /* ถ้ากรอกข้อมูลติดต่อมาด้วยต้องตรงกับใบนั้น ส่วนเลขสุ่มเดาไม่ได้อยู่แล้ว */
-    if (!found || (contactRaw && !contactMatches_(found, contactRaw))) {
-      return { error: 'ไม่พบใบแจ้งปัญหา กรุณาตรวจสอบเลขที่และข้อมูลติดต่อ' };
+    if (found) {
+      return { ticket: found };
     }
 
-    return { ticket: found };
+    if (!contactRaw) {
+      return { error: 'ไม่พบใบแจ้งปัญหา กรุณาตรวจสอบเลขที่ใบแจ้ง' };
+    }
   }
 
-  /* กรอกข้อมูลติดต่ออย่างเดียว — คืนรายการทุกใบที่ใช้ข้อมูลนี้
+  /* ค้นด้วยเบอร์โทร/ไอดีไลน์/อีเมล — คืนรายการทุกใบที่ใช้ข้อมูลนี้
      เรียง: งานที่ยังไม่ปิดก่อน แล้วตามวันที่แจ้งใหม่สุดก่อน */
   const hits = list.filter(function (ticket) {
     return contactMatches_(ticket, contactRaw);
   });
 
   if (!hits.length) {
-    return { error: 'ไม่พบใบแจ้งปัญหาที่ใช้ข้อมูลติดต่อนี้' };
+    return { error: 'ไม่พบข้อมูลที่ค้นหา กรุณาตรวจสอบเลขที่ใบแจ้ง เบอร์โทร ไอดีไลน์ หรืออีเมล' };
   }
 
   hits.sort(function (a, b) {
@@ -963,7 +966,8 @@ function searchTickets_(rows, want, contactRaw) {
   };
 }
 
-/** ตรวจว่า contact ตรงกับเบอร์โทร (เทียบเฉพาะตัวเลข) หรือไอดีไลน์ (ไม่สนตัวพิมพ์เล็ก/ใหญ่) */
+/** ตรวจว่า contact ตรงกับเบอร์โทร (เทียบเฉพาะตัวเลข) ไอดีไลน์ หรืออีเมล
+ *  (ไอดีไลน์/อีเมลไม่สนตัวพิมพ์เล็ก/ใหญ่) */
 function contactMatches_(ticket, contactRaw) {
   const digits = String(contactRaw || '').replace(/\D/g, '');
 
@@ -972,6 +976,12 @@ function contactMatches_(ticket, contactRaw) {
   }
 
   if (contactRaw && String(ticket.lineId || '').trim().toLowerCase() ===
+      String(contactRaw).trim().toLowerCase()) {
+    return true;
+  }
+
+  if (contactRaw && String(ticket.email || '').trim() !== '' &&
+      String(ticket.email || '').trim().toLowerCase() ===
       String(contactRaw).trim().toLowerCase()) {
     return true;
   }
