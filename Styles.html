@@ -671,7 +671,18 @@
        (จอเตี้ยแล้วเนื้อหาล้น เมนูข้างยังเลื่อนดูได้เหมือนเดิม) */
     .nav-actions {
         margin-top: auto;
-        padding-bottom: 2px;
+        padding: 0 12px 2px;
+    }
+
+    .nav .nav-actions .nav-link--button {
+        /* <button> ไม่ยืดเต็มความกว้างตาม flex แบบ <a> (วัดจริงในเบราว์เซอร์ :
+           ปุ่มฟ้ากว้างเท่าเนื้อหา ~124px ส่วนปุ่มลิงก์ยืดเต็ม ~226px)
+           บังคับเต็มกว้างเองด้วย width:100% + ย้าย margin ข้างเข้ากรอบนอกแทน
+           (ถ้าเหลือ margin ไว้จะล้นออกนอกเมนู) */
+        box-sizing: border-box;
+        width: 100%;
+        margin-right: 0;
+        margin-left: 0;
     }
 
     .nav-link {
