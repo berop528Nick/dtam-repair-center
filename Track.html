@@ -172,21 +172,12 @@
         /* แว่นขยายทั้งอันขยับขึ้นลงด้วย SMIL (CSS transform บน g ทำให้เนื้อหาที่ตามหลังไม่วาดใน Chrome) */
 
         /* เส้นบรรทัดในเอกสารวิ่งเหมือนกำลังเขียน (ทีละบรรทัดบนลงล่าง วนซ้ำ) */
-        /* เส้นบรรทัดเขียนทีละเส้นบนลงล่าง (delay เหลื่อมกัน รอบ 8.6 วิ ถือภาพเต็มนานขึ้น) */
+        /* ภาพกำลังค้นหา: เส้นนิ่ง แว่นขยายขยับขึ้นลง (mag-bob 1.8s) */
+        /* เส้นอยู่นิ่งทั้งหมด ขยับแค่แว่นขยาย */
         .search-art svg .wline {
-            stroke-dasharray: 1;
-            stroke-dashoffset: 1;
-            opacity: 0;
-            animation: write-seq 8.6s linear infinite;
-        }
-
-        @keyframes write-seq {
-            0% { stroke-dashoffset: 1; opacity: 0; }
-            2.5% { stroke-dashoffset: 1; opacity: 1; }
-            12% { stroke-dashoffset: 0; opacity: 1; }
-            88.4% { stroke-dashoffset: 0; opacity: 1; }
-            95.3% { stroke-dashoffset: 0; opacity: 0; }
-            95.4%, 100% { stroke-dashoffset: 1; opacity: 0; }
+            stroke-dasharray: none;
+            stroke-dashoffset: 0;
+            opacity: 1;
         }
 
 
@@ -672,21 +663,7 @@
                 searchBtn.textContent = searching ? 'กำลังตรวจสอบ' : 'ตรวจสอบสถานะ';
             }
 
-            /* เริ่มเขียนเส้นใหม่ทุกครั้งที่ค้น: รีสตาร์ทอนิเมชันให้วิ่งจากบรรทัดแรก
-               (อนิเมชันเดินตั้งแต่เปิดหน้า ถ้าไม่รีสตาร์ท ตอนกดค้นจะเจอแค่วาดค้างไว้) */
-            function restartWrite() {
-                if (!searchArt || !searchArt.querySelectorAll) {
-                    return;
-                }
-                var lines = searchArt.querySelectorAll('.wline');
-                var i;
-                for (i = 0; i < lines.length; i++) {
-                    lines[i].style.animation = 'none';
-                }
-                void searchArt.offsetWidth;
-                for (i = 0; i < lines.length; i++) {
-                    lines[i].style.animation = '';
-                }
+            
             }
 
             /* ---------- แสดง/ซ่อนแบบนุ่มนวล (วัดความสูงจริงก่อน animate) ---------- */
@@ -998,7 +975,6 @@
                 conceal(listCard);
                 conceal(notice);
                 setBusy(true);
-                restartWrite();
                 reveal(searchArt);
                 lookup(q);
             }
@@ -1063,7 +1039,6 @@
             if (preset) {
                 input.value = preset;
                 setBusy(true);
-                restartWrite();
                 reveal(searchArt);
                 lookup(preset);
             }
