@@ -775,6 +775,104 @@ function getTickets(token) {
 }
 
 /**
+ * ตัวเลขสรุปแดชบอร์ด (payload เล็ก ~1KB — หน้าเว็บโชว์การ์ดสรุป/บาร์ได้ก่อน
+ * ไม่ต้องรอ getTickets ที่ขนข้อมูลทั้งชีต ~1MB)
+ * นับลอจิกเดียวกับ renderSummary ฝั่งหน้าเว็บ : ทุกช่วงเวลา ไม่กรองวันที่
+ * @param {string} token
+ * @param {string} scope 'mine' = เฉพาะงานของฉัน (เทียบชื่อผู้รับผิดชอบ)
+ * @param {string} ownerName ชื่อผู้ใช้ที่ล็อกอิน (ใช้เมื่อ scope เป็น mine)
+ * @return {Object} { ok, total, done, progress, pending, cancel,
+ *                     monthRows, monthDone, aging, avgDays, top }
+ */
+function getDashboardStats(token, scope, ownerName) {
+  if (!requireSession_(token)) {
+    return { ok: false, message: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่' };
+  }
+
+  var tickets = readTicketRows_();
+
+  if (scope === 'mine') {
+    var want = String(ownerName || '').trim().toLowerCase();
+    tickets = tickets.filter(function (ticket) {
+      return String(ticket.owner || '').trim().toLowerCase() === want;
+    });
+  }
+
+  var now = new Date();
+  var today = now.getTime();
+  var done = 0;
+  var progress = 0;
+  var pending = 0;
+  var cancel = 0;
+  var monthRows = 0;
+  var monthDone = 0;
+  var aging = 0;
+  var repairTotal = 0;
+  var repairCount = 0;
+  var equipCounts = {};
+
+  tickets.forEach(function (ticket) {
+    if (ticket.status === 'เสร็จสิ้น') {
+      done += 1;
+      var key = ticket.equipment || 'ไม่ระบุ';
+      equipCounts[key] = (equipCounts[key] || 0) + 1;
+    } else if (ticket.status === 'กำลังดำเนินการ') {
+      progress += 1;
+    } else if (ticket.status === 'รอดำเนินการ') {
+      pending += 1;
+    } else if (ticket.status === 'ยกเลิก') {
+      cancel += 1;
+    }
+
+    var opened = ticket.reportedAt ? new Date(ticket.reportedAt) : null;
+
+    if (opened && !isNaN(opened.getTime())) {
+      if (opened.getFullYear() === now.getFullYear() &&
+          opened.getMonth() === now.getMonth()) {
+        monthRows += 1;
+        if (ticket.status === 'เสร็จสิ้น') {
+          monthDone += 1;
+        }
+      }
+
+      if (ticket.status !== 'เสร็จสิ้น' && ticket.status !== 'ยกเลิก' &&
+          (today - opened.getTime()) / 86400000 > 7) {
+        aging += 1;
+      }
+    }
+
+    if (ticket.status === 'เสร็จสิ้น' && ticket.reportedAt && ticket.closedAt) {
+      var start = new Date(ticket.reportedAt).getTime();
+      var end = new Date(ticket.closedAt).getTime();
+      if (isFinite(start) && isFinite(end) && end >= start) {
+        repairTotal += (end - start) / 86400000;
+        repairCount += 1;
+      }
+    }
+  });
+
+  var top = Object.keys(equipCounts).map(function (name) {
+    return { name: name, count: equipCounts[name] };
+  }).sort(function (a, b) {
+    return b.count - a.count;
+  }).slice(0, 5);
+
+  return {
+    ok: true,
+    total: tickets.length,
+    done: done,
+    progress: progress,
+    pending: pending,
+    cancel: cancel,
+    monthRows: monthRows,
+    monthDone: monthDone,
+    aging: aging,
+    avgDays: repairCount ? repairTotal / repairCount : 0,
+    top: top,
+  };
+}
+
+/**
  * ใบแจ้งซ่อมใบเดียว (หน้าติดตามสถานะ — ไม่ต้องล็อกอิน แต่ต้องกรอก
  * เบอร์โทรหรือไอดีไลน์ที่ใช้แจ้งให้ตรงกับใบแจ้ง เพื่อกันการไล่ดูใบของคนอื่น)
  * @param {string} ticketNo

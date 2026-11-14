@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwgfc17k">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgfpe07">
     <style>
         /* ---------- โมดัลจัดการใบแจ้ง ---------- */
         .edit-overlay {
@@ -537,7 +537,7 @@
     </div>
 </div>
 
-<script src="assets/app.js?v=mwgfc17k"></script>
+<script src="assets/app.js?v=mwgfpe07"></script>
 
 <script>
     window.PAGE_ID = new URLSearchParams(window.location.search).get('scope') === 'mine'
@@ -762,13 +762,224 @@
 
         /* ---------- โหลดข้อมูลจริงจากชีต ----------
            โหมดตัวอย่าง (preview / ไม่มี Apps Script) ใช้ข้อมูลที่สุ่มในหน้านี้แทน */
+        var previewRows = null;
+
+        function testRows() {
+            /* สร้างครั้งเดียวแล้วใช้ร่วมกันทั้งสรุปด่วนและตาราง
+               (สุ่มต่อลำดับ ถ้าสร้างแยกกันสองชุดตัวเลขจะไม่ตรงกัน) */
+            if (!previewRows) {
+                previewRows = buildTestRows(TEST_ROW_COUNT);
+            }
+            return previewRows;
+        }
+
+        /* นับสรุปจากแถว (ลอจิกเดียวกับ getDashboardStats ฝั่งเซิร์ฟเวอร์
+           ใช้เฉพาะโหมดตัวอย่างที่ไม่มีเซิร์ฟเวอร์) */
+        function statsFromRows(rows) {
+            var list = onlyMine
+                ? rows.filter(function (row) {
+                    return String(row.owner || '').trim().toLowerCase() === myName;
+                })
+                : rows;
+
+            var now = new Date();
+            var today = now.getTime();
+            var s = {
+                total: list.length, done: 0, progress: 0, pending: 0, cancel: 0,
+                monthRows: 0, monthDone: 0, aging: 0, avgDays: 0, top: []
+            };
+            var repairTotal = 0;
+            var repairCount = 0;
+            var equipCounts = {};
+
+            list.forEach(function (row) {
+                if (row.status === 'เสร็จสิ้น') {
+                    s.done += 1;
+                    var key = row.equipment || 'ไม่ระบุ';
+                    equipCounts[key] = (equipCounts[key] || 0) + 1;
+                } else if (row.status === 'กำลังดำเนินการ') {
+                    s.progress += 1;
+                } else if (row.status === 'รอดำเนินการ') {
+                    s.pending += 1;
+                } else if (row.status === 'ยกเลิก') {
+                    s.cancel += 1;
+                }
+
+                var opened = row.reportedAt ? new Date(row.reportedAt) : null;
+                if (opened && !isNaN(opened.getTime())) {
+                    if (opened.getFullYear() === now.getFullYear() &&
+                        opened.getMonth() === now.getMonth()) {
+                        s.monthRows += 1;
+                        if (row.status === 'เสร็จสิ้น') {
+                            s.monthDone += 1;
+                        }
+                    }
+                    if (row.status !== 'เสร็จสิ้น' && row.status !== 'ยกเลิก' &&
+                        (today - opened.getTime()) / 86400000 > 7) {
+                        s.aging += 1;
+                    }
+                }
+
+                if (row.status === 'เสร็จสิ้น' && row.reportedAt && row.closedAt) {
+                    var start = new Date(row.reportedAt).getTime();
+                    var end = new Date(row.closedAt).getTime();
+                    if (isFinite(start) && isFinite(end) && end >= start) {
+                        repairTotal += (end - start) / 86400000;
+                        repairCount += 1;
+                    }
+                }
+            });
+
+            s.avgDays = repairCount ? repairTotal / repairCount : 0;
+            s.top = Object.keys(equipCounts).map(function (name) {
+                return { name: name, count: equipCounts[name] };
+            }).sort(function (a, b) {
+                return b.count - a.count;
+            }).slice(0, 5);
+
+            return s;
+        }
+
+        /* วาดการ์ดสรุป + บาร์ + แท็กจากข้อมูลสรุปด่วน (ก้อนเล็กมาก่อน)
+           เขียนค่าตรง ๆ ไม่รอแอนิเมชัน แล้วฝากค่าไว้ใน dataset
+           พอแถวเต็มมา setStat ฝั่ง startWithRows จะแอนิเมชันต่อจากเลขนี้เอง */
+        function renderSummaryStats(s) {
+            var summarySec = document.getElementById('summary');
+            if (summarySec) {
+                summarySec.classList.remove('is-loading-sec');
+                summarySec.classList.add('is-arrived');
+            }
+
+            function fmtNum(value) {
+                return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            }
+            function pct(part, whole) {
+                return whole ? Math.round((part / whole) * 100) : 0;
+            }
+            function setFast(name, value) {
+                var node = document.querySelector('[data-stat="' + name + '"]');
+                if (node) {
+                    node.dataset.value = String(value);
+                    node.textContent = fmtNum(value);
+                }
+            }
+            function setFastSub(name, text) {
+                var node = document.querySelector('[data-sub="' + name + '"]');
+                if (node) {
+                    node.textContent = text;
+                }
+            }
+            function setFastTag(key, value) {
+                var node = document.querySelector('[data-tag-count="' + key + '"]');
+                if (node) {
+                    node.textContent = fmtNum(value);
+                }
+            }
+
+            setFast('total', s.total);
+            setFastSub('total', s.total
+                ? (onlyMine ? 'งานที่มอบหมายให้คุณ' : 'นับเฉพาะช่วงที่เลือก')
+                : 'ไม่มีรายการในช่วงนี้');
+
+            setFast('done', s.done);
+            setFastSub('done', pct(s.done, s.total) + '% ของทั้งหมด · เฉลี่ย ' +
+                Number(s.avgDays || 0).toFixed(1) + ' วัน/งาน');
+
+            setFast('progress', s.progress);
+            setFastSub('progress', onlyMine
+                ? pct(s.progress, s.total) + '% ของทั้งหมด'
+                : 'รอดำเนินการอีก ' + fmtNum(s.pending) + ' งาน');
+
+            setFast('cancel', s.cancel);
+            setFastSub('cancel', pct(s.cancel, s.total) + '% ของทั้งหมด');
+
+            setFast('month', s.monthRows);
+            setFastSub('month', 'เสร็จแล้ว ' + fmtNum(s.monthDone) + ' งาน');
+
+            setFastTag('all', s.total);
+            setFastTag('pending', s.pending);
+            setFastTag('progress', s.progress);
+            setFastTag('done', s.done);
+            setFastTag('cancel', s.cancel);
+
+            var fastNow = new Date();
+            var fastMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+                'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+            var monthName = document.getElementById('summaryMonthName');
+            if (monthName) {
+                monthName.textContent =
+                    fastMonths[fastNow.getMonth()] + ' ' + (fastNow.getFullYear() + 543);
+            }
+            var period = document.getElementById('summaryPeriod');
+            if (period) {
+                period.textContent = 'ทุกช่วงเวลา';
+            }
+            var aging = document.getElementById('summaryAging');
+            if (aging) {
+                aging.textContent = s.aging
+                    ? 'ค้างเกิน 7 วัน ' + fmtNum(s.aging) + ' งาน'
+                    : 'ไม่มีงานค้างเกิน 7 วัน';
+            }
+
+            var bars = document.getElementById('equipBars');
+            var top = s.top || [];
+            if (bars) {
+                if (!top.length) {
+                    bars.innerHTML =
+                        '<li class="stat-bars-empty">ยังไม่มีงานที่ซ่อมเสร็จในช่วงนี้</li>';
+                } else {
+                    var first = top[0].count || 1;
+                    bars.innerHTML = top.map(function (item) {
+                        return '<li>' +
+                            '<span class="stat-bar-name" title="' + App.esc(item.name) + '">' +
+                                App.esc(item.name) + '</span>' +
+                            '<span class="stat-bar-track">' +
+                                '<span class="stat-bar-fill" style="width:' +
+                                    Math.round((item.count / first) * 100) + '%"></span></span>' +
+                            '<span class="stat-bar-value">' + fmtNum(item.count) + '</span>' +
+                            '</li>';
+                    }).join('');
+                }
+            }
+        }
+
+        /* สรุปก้อนเล็ก : ไฟล์เล็กมาก่อนตารางเสมอ — ส่วนไหนมาก่อนขึ้นก่อน */
+        function loadStats(done) {
+            var run = (window.google && window.google.script && window.google.script.run) || null;
+            var token = App.auth.token();
+
+            if (!run) {
+                done(statsFromRows(testRows()));
+                return;
+            }
+
+            if (!token) {
+                return;
+            }
+
+            try {
+                run.withSuccessHandler(function (res) {
+                    if (res && res.ok) {
+                        done(res);
+                    }
+                    /* อ่านสรุปไม่สำเร็จก็ไม่ต้องแจ้ง — รอแถวเต็มวาดทีเดียวเหมือนเดิม */
+                }).getDashboardStats(token, onlyMine ? 'mine' : 'all',
+                    String(window.CURRENT_USER || ''));
+            } catch (e) { }
+        }
+
         function loadRows(done) {
             var run = (window.google && window.google.script && window.google.script.run) || null;
             var token = App.auth.token();
 
-            /* ไม่มีเซิร์ฟเวอร์ (preview / GitHub Pages) = โหมดตัวอย่าง */
+            /* ไม่มีเซิร์ฟเวอร์ (preview / GitHub Pages) = โหมดตัวอย่าง
+               หน่วงตารางหนึ่งเฟรม ให้การ์ดสรุปที่มาคู่กันได้วาดขึ้นก่อน
+               (จำลองพฤติกรรม progressive ของข้อมูลจริง) */
             if (!run) {
-                done(buildTestRows(TEST_ROW_COUNT));
+                var rows = testRows();
+                requestAnimationFrame(function () {
+                    done(rows);
+                });
                 return;
             }
 
@@ -813,8 +1024,13 @@
             }
         }
 
+        /* แถวเต็มมาแล้ว : ต่อจากนี้ให้แถวเป็นหลัก (กันสรุปด่วนที่มาช้า
+           เขียนทับตัวกรองที่ผู้ใช้เลือกไปแล้ว) */
+        var rowsReady = false;
+
         /* ---------- ส่วนแสดงผล : เริ่มเมื่อได้ข้อมูลแล้ว ---------- */
         function startWithRows(ROWS) {
+            rowsReady = true;
 
         /* ข้อมูลมาแล้ว : ถอดโครงร่างรอโหลดของส่วนสรุปออก
            (โครงในตารางถูก App.table วาดทับหายไปเอง) */
@@ -1173,6 +1389,16 @@
                 return b.count - a.count;
             }).slice(0, 5);
 
+            paintBars(list);
+        }
+
+        /* วาดแท่งบาร์จากลิสต์ที่จัดอันดับแล้ว (ใช้ร่วมกันทั้งข้อมูลสรุปด่วน
+           และข้อมูลแถวเต็ม — อย่างไหนมาก่อนก็วาดก่อน) */
+        function paintBars(list) {
+            if (!summaryNodes.bars) {
+                return;
+            }
+
             if (!list.length) {
                 summaryNodes.bars.innerHTML =
                     '<li class="stat-bars-empty">ยังไม่มีงานที่ซ่อมเสร็จในช่วงนี้</li>';
@@ -1479,6 +1705,13 @@
         renderSummary();
         }
 
+        /* ยิงคู่ขนาน : สรุปก้อนเล็กมาก่อนก็วาดการ์ดก่อน
+           ตารางก้อนใหญ่มาทีหลังค่อยวาดตาม — ไม่รอพร้อมกันแล้ว */
+        loadStats(function (stats) {
+            if (!rowsReady && stats) {
+                renderSummaryStats(stats);
+            }
+        });
         loadRows(startWithRows);
     })();
 </script>
