@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwgjeexu">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgjjrfm">
     <style>
         /* ---------- โมดัลจัดการใบแจ้ง ---------- */
         .edit-overlay {
@@ -288,7 +288,9 @@
                 <span>งานของฉัน</span>
             </a>
 
-            <!-- ปุ่มจัดการ : เพิ่มเจ้าหน้าที่ (ฟ้า) / แจ้งปัญหา (เหลือ) / ออกจากระบบ (แดง) -->
+            <!-- ปุ่มจัดการ : เพิ่มเจ้าหน้าที่ (ฟ้า) / แจ้งปัญหา (เหลือง) / ออกจากระบบ (แดง)
+                 รวมใน .nav-actions กล่องเดียวแล้วดันลงล่างสุดของเมนูข้าง -->
+            <div class="nav-actions">
             <button type="button" class="nav-link nav-link--button nav-link--staff" data-soon="เพิ่มเจ้าหน้าที่">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -320,6 +322,7 @@
                 </svg>
                 <span>ออกจากระบบ</span>
             </a>
+            </div>
         </nav>
     </aside>
 
@@ -532,7 +535,7 @@
     </div>
 </div>
 
-<script src="assets/app.js?v=mwgjeexu"></script>
+<script src="assets/app.js?v=mwgjjrfm"></script>
 
 <script>
     window.PAGE_ID = new URLSearchParams(window.location.search).get('scope') === 'mine'

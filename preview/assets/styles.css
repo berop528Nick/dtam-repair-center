@@ -576,7 +576,9 @@
     }
 
     .sidebar {
+        display: flex;
         flex: none;
+        flex-direction: column;
         width: var(--sidebar-width);
         padding-bottom: 14px;
         overflow-y: auto;
@@ -659,7 +661,16 @@
 
     .nav {
         display: flex;
+        flex: 1;
         flex-direction: column;
+        min-height: 0;
+    }
+
+    /* ปุ่มจัดการท้ายเมนู : รวมในกล่องเดียวแล้วดันลงล่างสุด
+       (จอเตี้ยแล้วเนื้อหาล้น เมนูข้างยังเลื่อนดูได้เหมือนเดิม) */
+    .nav-actions {
+        margin-top: auto;
+        padding-bottom: 2px;
     }
 
     .nav-link {
