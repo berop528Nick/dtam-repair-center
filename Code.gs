@@ -873,35 +873,82 @@ function getDashboardStats(token, scope, ownerName) {
 }
 
 /**
- * ใบแจ้งซ่อมใบเดียว (หน้าติดตามสถานะ — ไม่ต้องล็อกอิน แต่ต้องกรอก
- * เบอร์โทรหรือไอดีไลน์ที่ใช้แจ้งให้ตรงกับใบแจ้ง เพื่อกันการไล่ดูใบของคนอื่น)
- * @param {string} ticketNo
- * @param {string} contact เบอร์โทรหรือไอดีไลน์ของผู้แจ้ง
- * @return {Object} { ok, ticket }
+ * ใบแจ้งซ่อมใบเดียว (หน้าติดตามสถานะ — ไม่ต้องล็อกอิน
+ * กรอกเลขที่ใบแจ้ง "หรือ" เบอร์โทร/ไอดีไลน์ที่ใช้แจ้ง อย่างใดอย่างหนึ่งก็ได้
+ * เลขที่ใบแจ้งเป็นรหัสสุ่มเดาไม่ได้ จึงค้นด้วยเลขอย่างเดียวได้
+ * ถ้ากรอกทั้งสองช่องจะตรวจว่าข้อมูลติดต่อตรงกับใบนั้นด้วย)
+ * @param {string} ticketNo เลขที่ใบแจ้ง (เว้นว่างได้ถ้ากรอก contact)
+ * @param {string} contact เบอร์โทรหรือไอดีไลน์ของผู้แจ้ง (เว้นว่างได้ถ้ามีเลขที่ใบแจ้ง)
+ * @return {Object} { ok, ticket } หรือ { ok, rows } (ค้นด้วยข้อมูลติดต่ออย่างเดียว)
  */
 function getTicket(ticketNo, contact) {
-  const want = String(ticketNo || '').trim().toUpperCase().replace(/\s+/g, '');
+  const want = normalizeNo_(ticketNo);
   const contactRaw = String(contact || '').trim();
 
-  if (!want) {
-    return { ok: false, message: 'กรุณาระบุเลขที่ใบแจ้งปัญหา' };
+  if (!want && !contactRaw) {
+    return { ok: false, message: 'กรุณากรอกเลขที่ใบแจ้ง หรือเบอร์โทร/ไลน์ที่ใช้แจ้ง' };
   }
 
-  if (!contactRaw) {
-    return { ok: false, message: 'กรุณากรอกเบอร์โทรหรือไอดีไลน์ที่ใช้แจ้ง' };
+  const res = searchTickets_(readTicketRows_(), want, contactRaw);
+
+  if (res.error) {
+    return { ok: false, message: res.error };
   }
 
-  const found = readTicketRows_().filter(function (ticket) {
-    return String(ticket.no).toUpperCase().replace(/\s+/g, '') === want;
-  })[0];
-
-  /* ตอบ "ไม่พบ" เหมือนกันทั้งเลขผิดและข้อมูลติดต่อไม่ตรง
-     เพื่อไม่ให้เดาได้ว่าเลขไหนมีอยู่จริง */
-  if (!found || !contactMatches_(found, contactRaw)) {
-    return { ok: false, message: 'ไม่พบใบแจ้งปัญหา กรุณาตรวจสอบเลขที่และข้อมูลติดต่อ' };
+  if (res.ticket) {
+    return { ok: true, ticket: res.ticket };
   }
 
-  return { ok: true, ticket: found };
+  return { ok: true, rows: res.rows };
+}
+
+/** normalize เลขที่ใบแจ้ง (ตัวพิมพ์ใหญ่ทั้งหมด + ตัดช่องว่าง) */
+function normalizeNo_(raw) {
+  return String(raw || '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
+/**
+ * หัวใจการค้นหาใบแจ้ง (pure — ไม่แตะชีต เทสต์ใน harness ได้)
+ * @return {Object} { ticket } | { rows } | { error }
+ */
+function searchTickets_(rows, want, contactRaw) {
+  const list = rows || [];
+
+  /* กรอกเลขที่ใบแจ้งมา (จะมีข้อมูลติดต่อด้วยหรือไม่ก็ได้) */
+  if (want) {
+    const found = list.filter(function (ticket) {
+      return normalizeNo_(ticket.no) === want;
+    })[0];
+
+    /* ถ้ากรอกข้อมูลติดต่อมาด้วยต้องตรงกับใบนั้น ส่วนเลขสุ่มเดาไม่ได้อยู่แล้ว */
+    if (!found || (contactRaw && !contactMatches_(found, contactRaw))) {
+      return { error: 'ไม่พบใบแจ้งปัญหา กรุณาตรวจสอบเลขที่และข้อมูลติดต่อ' };
+    }
+
+    return { ticket: found };
+  }
+
+  /* กรอกข้อมูลติดต่ออย่างเดียว — คืนรายการทุกใบที่ใช้ข้อมูลนี้ (ใหม่สุดก่อน) */
+  const hits = list.filter(function (ticket) {
+    return contactMatches_(ticket, contactRaw);
+  });
+
+  if (!hits.length) {
+    return { error: 'ไม่พบใบแจ้งปัญหาที่ใช้ข้อมูลติดต่อนี้' };
+  }
+
+  return {
+    rows: hits.reverse().slice(0, 50).map(function (ticket) {
+      return {
+        no: ticket.no,
+        reportedAt: ticket.reportedAt,
+        category: ticket.category,
+        urgency: ticket.urgency,
+        status: ticket.status,
+        equipment: ticket.equipment,
+      };
+    }),
+  };
 }
 
 /** ตรวจว่า contact ตรงกับเบอร์โทร (เทียบเฉพาะตัวเลข) หรือไอดีไลน์ (ไม่สนตัวพิมพ์เล็ก/ใหญ่) */
@@ -1939,29 +1986,46 @@ function writeHeaders_(sheet, fromIndex) {
   });
 }
 
+/* ตัวอักษรสำหรับสุ่มเลขที่ใบแจ้ง — ตัด 0/O/1/I/L ออกกันอ่านผิด */
+const TICKET_ALPHABET_ = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
 /**
- * ออกเลขที่ใบแจ้งรูปแบบ RQ + ปีเดือน (yyMM) + ลำดับ 4 หลัก เช่น RQ2611-0001
+ * ออกเลขที่ใบแจ้งแบบสุ่ม รูปแบบ RQ + ปีเดือน (yyMM) + รหัสสุ่ม 6 หลัก เช่น RQ2611-X7K9P2
+ * เดาไม่ได้ ไม่เรียงลำดับ — ตรวจซ้ำกับเลขที่มีในชีตแล้วสุ่มใหม่ (สูงสุด 20 ครั้ง)
  */
 function nextTicketNo_(sheet) {
-  const ym = Utilities.formatDate(new Date(), CONFIG.TIMEZONE, 'yyMM');
-  const prefix = 'RQ' + ym + '-';
+  const taken = new Set();
   const lastRow = sheet.getLastRow();
 
-  let max = 0;
   if (lastRow > 1) {
     const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
     values.forEach(function (row) {
-      const value = String(row[0] || '').trim();
-      if (value.indexOf(prefix) === 0) {
-        const n = parseInt(value.slice(prefix.length), 10);
-        if (!isNaN(n) && n > max) {
-          max = n;
-        }
+      const value = String(row[0] || '').trim().toUpperCase();
+      if (value) {
+        taken.add(value);
       }
     });
   }
 
-  return prefix + String(max + 1).padStart(4, '0');
+  return randomTicketNo_(taken);
+}
+
+/** สุ่มเลขที่ใบแจ้ง 1 เลข (pure — รับ Set ของเลขที่มีอยู่ เทสต์ใน harness ได้) */
+function randomTicketNo_(taken) {
+  const ym = Utilities.formatDate(new Date(), CONFIG.TIMEZONE, 'yyMM');
+
+  for (let attempt = 0; attempt < 20; attempt++) {
+    let tail = '';
+    for (let i = 0; i < 6; i++) {
+      tail += TICKET_ALPHABET_.charAt(Math.floor(Math.random() * TICKET_ALPHABET_.length));
+    }
+    const no = 'RQ' + ym + '-' + tail;
+    if (!taken || !taken.has(no)) {
+      return no;
+    }
+  }
+
+  throw new Error('สุ่มเลขที่ใบแจ้งไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
 }
 
 /* ============================================================

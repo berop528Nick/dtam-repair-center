@@ -128,6 +128,58 @@
             color: #8b9a93;
         }
 
+        /* ---------- รายการใบแจ้ง (ค้นด้วยเบอร์โทร/ไลน์) ---------- */
+
+        .ticket-list {
+            margin: 0;
+            padding: 8px;
+            list-style: none;
+        }
+
+        .ticket-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px;
+            font-family: inherit;
+            text-align: left;
+            background: #fff;
+            border: 1px solid #e4ece8;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .ticket-list li + li {
+            margin-top: 8px;
+        }
+
+        .ticket-row:hover {
+            border-color: var(--brand-green);
+            box-shadow: 0 4px 14px rgba(26, 122, 68, 0.12);
+        }
+
+        .ticket-row-no {
+            font-weight: 700;
+            color: #245740;
+            white-space: nowrap;
+        }
+
+        .ticket-row-meta {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            font-size: 0.78rem;
+            color: #6b7c87;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .ticket-row .status {
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
         /* ---------- ผลการค้นหา ---------- */
 
         .result-card {
@@ -339,13 +391,13 @@
             <?!= include('Brand') ?>
             <h1>ติดตามสถานะการแจ้งปัญหา</h1>
             <p>ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก<br>
-                กรอกเลขที่ใบแจ้งปัญหาเพื่อดูสถานะและความคืบหน้า</p>
+                กรอกเลขที่ใบแจ้ง หรือเบอร์โทร/ไลน์ที่ใช้แจ้ง อย่างใดอย่างหนึ่งก็ได้</p>
         </section>
 
         <form class="search-card" id="trackForm" novalidate>
             <label class="search-label" for="ticketNo">เลขที่ใบแจ้งปัญหา</label>
             <div class="search-row">
-                <input type="text" id="ticketNo" class="form-control" placeholder="เช่น RQ2611-0001"
+                <input type="text" id="ticketNo" class="form-control" placeholder="เช่น RQ2611-X7K9P2"
                     autocomplete="off" spellcheck="false">
             </div>
             <label class="search-label" for="ticketContact">เบอร์โทรหรือไอดีไลน์ที่ใช้แจ้ง</label>
@@ -354,11 +406,18 @@
                     placeholder="เช่น 081-234-5678 หรือ lineid" autocomplete="off" spellcheck="false">
                 <button type="submit" class="search-btn">ตรวจสอบสถานะ</button>
             </div>
-            <p class="search-hint">ต้องกรอกข้อมูลติดต่อให้ตรงกับตอนแจ้งปัญหา
-                (ป้องกันการดูใบแจ้งของคนอื่น)</p>
+            <p class="search-hint">กรอกเลขที่ใบแจ้ง หรือเบอร์โทร/ไลน์ที่ใช้แจ้ง
+                อย่างใดอย่างหนึ่งก็ได้ (เลขที่ใบแจ้งเป็นรหัสสุ่ม เดาไม่ได้)</p>
         </form>
 
         <div id="notice" class="notice" role="status" hidden></div>
+
+        <section class="result-card" id="listCard" hidden>
+            <div class="result-head">
+                <h2>พบ <span id="listCount">0</span> ใบแจ้ง</h2>
+            </div>
+            <ul class="ticket-list" id="ticketList"></ul>
+        </section>
 
         <section class="result-card" id="resultCard" hidden>
             <div class="result-head">
@@ -518,6 +577,9 @@
             var notice = document.getElementById('notice');
             var card = document.getElementById('resultCard');
             var timeline = document.getElementById('timeline');
+            var listCard = document.getElementById('listCard');
+            var ticketList = document.getElementById('ticketList');
+            var listCount = document.getElementById('listCount');
 
             /* ---------- แสดง/ซ่อนแบบนุ่มนวล (วัดความสูงจริงก่อน animate) ---------- */
 
@@ -688,6 +750,7 @@
             }
 
             function renderTicket(ticket) {
+                conceal(listCard);
                 document.getElementById('resultNo').textContent = ticket.no;
                 document.getElementById('infoReported').textContent = stamp(ticket.reportedAt);
                 document.getElementById('infoReporter').textContent =
@@ -741,11 +804,39 @@
                 conceal(notice);
             }
 
+            /* โชว์รายการใบแจ้ง (ค้นด้วยเบอร์โทร/ไลน์อย่างเดียว) กดแถวไหนดูใบนั้น */
+            function renderList(rows) {
+                conceal(card);
+                ticketList.innerHTML = '';
+                (rows || []).forEach(function (row) {
+                    var li = document.createElement('li');
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'ticket-row';
+                    btn.setAttribute('data-no', row.no);
+                    var badge = STATUS_CLASS[row.status] || 'cancel';
+                    btn.innerHTML = '<span class="ticket-row-no">' + esc(row.no) + '</span>' +
+                        '<span class="ticket-row-meta">' + esc(row.category || '—') + ' · ' +
+                        esc(stamp(row.reportedAt)) + '</span>' +
+                        '<span class="status status--' + badge + '">' + esc(row.status || '—') + '</span>';
+                    btn.addEventListener('click', function () {
+                        input.value = row.no;
+                        lookup(normalize(row.no), contactInput.value.trim());
+                    });
+                    li.appendChild(btn);
+                    ticketList.appendChild(li);
+                });
+                listCount.textContent = String((rows || []).length);
+                conceal(notice);
+                reveal(listCard);
+            }
+
             function renderNotFound(raw) {
                 conceal(card);
+                conceal(listCard);
                 notice.innerHTML = '<strong>ไม่พบข้อมูลที่ค้นหา' +
                     (raw ? ' (เลขที่ ' + esc(raw) + ')' : '') + '</strong><br>' +
-                    'กรุณาตรวจสอบเลขที่และเบอร์โทร/ไลน์ให้ถูกต้อง (ตัวพิมพ์เล็ก/ใหญ่ไม่มีผล) ' +
+                    'กรุณาตรวจสอบเลขที่หรือเบอร์โทร/ไลน์ให้ถูกต้อง (ตัวพิมพ์เล็ก/ใหญ่ไม่มีผล) ' +
                     'หรือ<a href="?page=form">แจ้งปัญหาใหม่</a>';
                 reveal(notice);
             }
@@ -753,11 +844,12 @@
             function search() {
                 var raw = input.value.trim();
                 var contactRaw = contactInput.value.trim();
-                if (!raw || !contactRaw) {
+                if (!raw && !contactRaw) {
                     conceal(card);
-                    notice.textContent = 'กรุณากรอกเลขที่ใบแจ้งปัญหาและเบอร์โทร/ไลน์ที่ใช้แจ้ง';
+                    conceal(listCard);
+                    notice.textContent = 'กรุณากรอกเลขที่ใบแจ้ง หรือเบอร์โทร/ไลน์ที่ใช้แจ้ง อย่างใดอย่างหนึ่ง';
                     reveal(notice);
-                    (raw ? contactInput : input).focus();
+                    input.focus();
                     return;
                 }
 
@@ -769,11 +861,24 @@
                 var run = (window.google && window.google.script && window.google.script.run) || null;
 
                 if (!run) {
-                    var demo = DEMO_TICKETS[no];
-                    if (demo && contactOk(demo, contactRaw)) {
-                        renderTicket(demo);
+                    if (no) {
+                        var demo = DEMO_TICKETS[no];
+                        if (demo && (!contactRaw || contactOk(demo, contactRaw))) {
+                            renderTicket(demo);
+                        } else {
+                            renderNotFound(no);
+                        }
                     } else {
-                        renderNotFound(no);
+                        var hits = Object.keys(DEMO_TICKETS).map(function (key) {
+                            return DEMO_TICKETS[key];
+                        }).filter(function (ticket) {
+                            return contactOk(ticket, contactRaw);
+                        });
+                        if (hits.length) {
+                            renderList(hits);
+                        } else {
+                            renderNotFound('');
+                        }
                     }
                     return;
                 }
@@ -781,6 +886,8 @@
                 run.withSuccessHandler(function (res) {
                     if (res && res.ok && res.ticket) {
                         renderTicket(res.ticket);
+                    } else if (res && res.ok && res.rows) {
+                        renderList(res.rows);
                     } else {
                         renderNotFound(no);
                     }
@@ -794,11 +901,11 @@
                 search();
             });
 
-            /* รองรับลิงก์ตรง เช่น ?page=track&no=RQ2611-0001 (กรอกข้อมูลติดต่อเพิ่มเอง) */
+            /* รองรับลิงก์ตรง เช่น ?page=track&no=RQ2611-X7K9P2 (ค้นด้วยเลขอย่างเดียวได้เลย) */
             var preset = new URLSearchParams(window.location.search).get('no');
             if (preset) {
                 input.value = preset;
-                contactInput.focus();
+                lookup(normalize(preset), '');
             }
         })();
     </script>
