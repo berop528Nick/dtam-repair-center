@@ -104,8 +104,14 @@
         }
 
         .search-btn {
+            position: relative;
+            overflow: hidden;
             height: 44px;
             padding: 0 22px;
+            /* กว้างคงที่ตั้งแต่แรก สลับข้อความตอน busy แล้วปุ่มไม่ขยับ (ไม่กระตุก) */
+            min-width: 11em;
+            white-space: nowrap;
+            text-align: center;
             font-family: inherit;
             font-size: 0.9rem;
             font-weight: 500;
@@ -126,18 +132,24 @@
             cursor: wait;
         }
 
-        /* ลูกเล่นตอนกำลังค้น: แสงวูบกวาดบนปุ่ม (pure CSS ไม่ต้องเพิ่มไฟล์) */
+        /* ลูกเล่นตอนกำลังค้น: แสงวูบกวาดบนปุ่ม (ขยับด้วย transform ลื่นกว่า background-position) */
         .search-btn.is-busy {
-            background-color: var(--brand-green-dark);
-            background-image: linear-gradient(110deg,
+            background: var(--brand-green-dark);
+        }
+
+        .search-btn.is-busy::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(110deg,
                 transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
-            background-size: 200% 100%;
             animation: btn-sheen 1.1s linear infinite;
+            pointer-events: none;
         }
 
         @keyframes btn-sheen {
-            from { background-position: 200% 0; }
-            to { background-position: -100% 0; }
+            from { transform: translateX(-101%); }
+            to { transform: translateX(101%); }
         }
 
         /* ภาพกำลังค้นหา (ไฟล์ assets/status_work.svg ฝังในหน้านี้แล้ว) */
