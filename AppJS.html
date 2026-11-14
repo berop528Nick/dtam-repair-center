@@ -73,6 +73,16 @@
             return '<span class="status status--' + cls + '">' + esc(text || '—') + '</span>';
         }
 
+        /* ลิงก์ Drive แบบ /file/d/…/view เอามาใส่ <img> ตรง ๆ ไม่ขึ้น
+           (มันเป็นหน้าเว็บ viewer ไม่ใช่ไฟล์รูป — กดลิงก์ดูได้อย่างเดียว)
+           เลยแปลงเป็น thumbnail URL สำหรับโชว์ ส่วนลิงก์กดดูใช้ของเดิม */
+        function driveThumb(url) {
+            var match = String(url || '').match(/drive\.google\.com\/file\/d\/([^\/\?#]+)/);
+            return match
+                ? 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w200'
+                : url;
+        }
+
         /* รูปแนบในตาราง : โชว์รูปย่อครบทุกใบ (สูงสุด 3) ใบละลิงก์ของตัวเอง
            กดใบไหนเปิดรูปต้นฉบับใบนั้นในแท็บใหม่ — รูปแบบเดียวกับหน้าติดตามสถานะ */
         function photoCell(photos) {
@@ -85,9 +95,10 @@
             var shown = list.slice(0, 3);
             var html = '<span class="photo-thumbs">' + shown.map(function (url, i) {
                 var safe = esc(url);
+                var thumb = esc(driveThumb(url));
                 return '<a class="photo-thumb" href="' + safe + '" target="_blank" rel="noopener"' +
                     ' title="เปิดดูรูปแนบที่ ' + (i + 1) + ' (ทั้งหมด ' + list.length + ' รูป)">' +
-                    '<img src="' + safe + '" alt="รูปแนบที่ ' + (i + 1) + '" loading="lazy"></a>';
+                    '<img src="' + thumb + '" alt="รูปแนบที่ ' + (i + 1) + '" loading="lazy"></a>';
             }).join('') + '</span>';
             if (list.length > shown.length) {
                 html += '<span class="photo-count">+' + (list.length - shown.length) + '</span>';

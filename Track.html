@@ -665,6 +665,15 @@
                     .replace(/"/g, '&quot;');
             }
 
+            /* ลิงก์ Drive แบบ /view ใส่ <img> ตรง ๆ ไม่ขึ้น — แปลงเป็น thumbnail
+               สำหรับโชว์ (เหมือน App.photoCell ฝั่งแดชบอร์ด) */
+            function driveThumb(url) {
+                var match = String(url || '').match(/drive\.google\.com\/file\/d\/([^\/\?#]+)/);
+                return match
+                    ? 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w400'
+                    : url;
+            }
+
             /* ตรวจข้อมูลติดต่อแบบเดียวกับเซิร์ฟเวอร์ (โหมดตัวอย่าง) */
             function contactOk(ticket, contactRaw) {
                 var digits = String(contactRaw || '').replace(/\D/g, '');
@@ -690,7 +699,9 @@
                 document.getElementById('infoUrgency').textContent = ticket.urgency || '—';
                 document.getElementById('infoDetail').textContent = ticket.detail || '—';
 
-                /* รูปแนบ (ลิงก์ Drive) — มีค่อยโชว์ */
+                /* รูปแนบ (ลิงก์ Drive) — มีค่อยโชว์
+                   ลิงก์ /view ใส่ <img> ตรง ๆ ไม่ขึ้น จึงแปลงเป็น thumbnail
+                   สำหรับโชว์ ส่วนลิงก์กดดูใช้ของเดิม */
                 var photos = ticket.photos || [];
                 var photosItem = document.getElementById('photosItem');
                 var photosBox = document.getElementById('infoPhotos');
@@ -698,8 +709,9 @@
                     if (photos.length) {
                         photosBox.innerHTML = '<div class="photo-links">' + photos.map(function (url, i) {
                             var safe = esc(url);
+                            var thumb = esc(driveThumb(url));
                             return '<a href="' + safe + '" target="_blank" rel="noopener">' +
-                                '<img src="' + safe + '" alt="รูปแนบ ' + (i + 1) + '" loading="lazy"></a>';
+                                '<img src="' + thumb + '" alt="รูปแนบ ' + (i + 1) + '" loading="lazy"></a>';
                         }).join('') + '</div>';
                         photosItem.hidden = false;
                     } else {
