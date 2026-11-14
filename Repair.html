@@ -763,7 +763,7 @@
 
                     <div class="field">
                         <div class="label-row">
-                            <label class="field-label" for="itemCode">เลขครุภัณฑ์/พัสดุ</label>
+                            <label class="field-label" for="itemCode">เลขครุภัณฑ์/พัสดุ <span class="req" id="itemCodeReq">*</span></label>
                             <label class="toggle-inline">
                                 <input type="checkbox" id="noCode"> ไม่มีเลขครุภัณฑ์/เลขที่
                             </label>
@@ -948,6 +948,7 @@
             var category = document.getElementById('category');
             var itemCode = document.getElementById('itemCode');
             var noCode = document.getElementById('noCode');
+            var itemCodeReq = document.getElementById('itemCodeReq');
             var detail = document.getElementById('detail');
             var reporter = document.getElementById('reporterName');
             var department = document.getElementById('department');
@@ -1025,7 +1026,13 @@
             });
             syncChannel();
 
-            /* ไม่มีเลขครุภัณฑ์/เลขที่ : ติ๊ก = ไม่บังคับใส่, ไม่ติ๊ก = บังคับใส่ */
+            /* ไม่มีเลขครุภัณฑ์/เลขที่ : ติ๊ก = ไม่บังคับใส่, ไม่ติ๊ก = บังคับใส่
+               เครื่องหมาย * หน้า label โชว์ตามด้วย (บังคับเฉพาะตอนไม่ติ๊ก) */
+            function syncCodeReq() {
+                if (itemCodeReq) {
+                    itemCodeReq.hidden = noCode.checked;
+                }
+            }
             noCode.addEventListener('change', function () {
                 if (noCode.checked) {
                     itemCode.value = '';
@@ -1036,7 +1043,9 @@
                     itemCode.disabled = false;
                     itemCode.placeholder = 'ระบุเลขครุภัณฑ์/พัสดุ';
                 }
+                syncCodeReq();
             });
+            syncCodeReq();
 
             /* รูปถ่าย 3 ช่อง */
             var MAX_SLOTS = 3;
@@ -1454,6 +1463,7 @@
                 noCode.checked = false;
                 itemCode.disabled = false;
                 itemCode.placeholder = 'ระบุเลขครุภัณฑ์/พัสดุ';
+                syncCodeReq();
             });
 
             App.initShell();
