@@ -82,8 +82,18 @@
                 : url;
         }
 
+        /* รูปขนาดดูจริงใน lightbox : Drive ใช้ thumbnail ใหญ่ (viewer /view
+           ใส่ <img> ไม่ขึ้น) รูปอื่นใช้ URL เดิม */
+        function driveFull(url) {
+            var match = String(url || '').match(/drive\.google\.com\/file\/d\/([^\/\?#]+)/);
+            return match
+                ? 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1600'
+                : url;
+        }
+
         /* รูปแนบในตาราง : โชว์รูปย่อครบทุกใบ (สูงสุด 3) ใบละลิงก์ของตัวเอง
-           กดใบไหนเปิดรูปต้นฉบับใบนั้นในแท็บใหม่ — รูปแบบเดียวกับหน้าติดตามสถานะ */
+           กดใบไหนเปิดรูปใหญ่ใบนั้นใน lightbox กลางหน้านี้เลย ไม่เปิดแท็บใหม่
+           (ลิงก์มี data-lightbox — ตัวดักคลิกกลางอยู่ท้ายไฟล์) */
         function photoCell(photos) {
             var list = (photos || []).filter(function (url) {
                 return !!url;
@@ -93,16 +103,227 @@
             }
             var shown = list.slice(0, 3);
             var html = '<span class="photo-thumbs">' + shown.map(function (url, i) {
-                var safe = esc(url);
+                var full = esc(driveFull(url));
                 var thumb = esc(driveThumb(url));
-                return '<a class="photo-thumb" href="' + safe + '" target="_blank" rel="noopener"' +
-                    ' title="เปิดดูรูปแนบที่ ' + (i + 1) + ' (ทั้งหมด ' + list.length + ' รูป)">' +
+                return '<a class="photo-thumb" href="' + full + '" data-lightbox' +
+                    ' title="กดเพื่อดูรูปใหญ่ (รูปที่ ' + (i + 1) + ' จาก ' + list.length + ')">' +
                     '<img src="' + thumb + '" alt="รูปแนบที่ ' + (i + 1) + '" loading="lazy"></a>';
             }).join('') + '</span>';
             if (list.length > shown.length) {
                 html += '<span class="photo-count">+' + (list.length - shown.length) + '</span>';
             }
             return html;
+        }
+
+        /* ---------- กล่องดูรูปใหญ่ (lightbox) ----------
+           กดรูปย่อ (ลิงก์ที่มี data-lightbox) → เปิดรูปใหญ่ทับในหน้านี้เลย
+           เก็บทั้งกลุ่มรูปในแถวเดียวกันไว้ กด ‹ › หรือลูกศรดูใบอื่นได้
+           Esc / กดพื้นหลัง / กด ✕ = ปิด (มีลิงก์เปิดต้นฉบับสำรองไว้ให้
+           กรณี Drive ไม่ยอมแสดงรูปในหน้าเว็บ) */
+        var lbItems = [];
+        var lbIndex = 0;
+        var lbFailed = false;
+        var lbOverlay = null;
+        var lbImg = null;
+        var lbCap = null;
+        var lbOrig = null;
+        var lbPrev = null;
+        var lbNext = null;
+
+        function lbEl(tag, cls, parent) {
+            var el = document.createElement(tag);
+            if (cls) {
+                el.className = cls;
+            }
+            if (parent) {
+                parent.appendChild(el);
+            }
+            return el;
+        }
+
+        function lbEnsure() {
+            if (lbOverlay) {
+                return;
+            }
+            var ov = lbEl('div', 'lightbox');
+            ov.id = 'dtamLightbox';
+            ov.hidden = true;
+            var back = lbEl('div', 'lightbox-backdrop', ov);
+            back.setAttribute('data-lb-close', '1');
+            var box = lbEl('figure', 'lightbox-box', ov);
+            var x = lbEl('button', 'lightbox-x', box);
+            x.setAttribute('data-lb-close', '1');
+            x.setAttribute('aria-label', 'ปิดรูป');
+            x.textContent = '✕';
+            lbImg = lbEl('img', 'lightbox-img', box);
+            lbImg.setAttribute('alt', 'รูปแนบขนาดใหญ่');
+            lbImg.setAttribute('referrerpolicy', 'no-referrer');
+            lbCap = lbEl('figcaption', 'lightbox-cap', box);
+            lbPrev = lbEl('button', 'lightbox-prev', box);
+            lbPrev.setAttribute('data-lb-nav', '-1');
+            lbPrev.setAttribute('aria-label', 'รูปก่อนหน้า');
+            lbPrev.textContent = '‹';
+            lbNext = lbEl('button', 'lightbox-next', box);
+            lbNext.setAttribute('data-lb-nav', '1');
+            lbNext.setAttribute('aria-label', 'รูปถัดไป');
+            lbNext.textContent = '›';
+            lbOrig = lbEl('a', 'lightbox-orig', box);
+            lbOrig.setAttribute('target', '_blank');
+            lbOrig.setAttribute('rel', 'noopener');
+            lbOrig.textContent = 'เปิดต้นฉบับ';
+            ov.addEventListener('click', function (ev) {
+                var t = ev.target;
+                var closer = t && t.closest ? t.closest('[data-lb-close]') : null;
+                if (closer) {
+                    lbClose();
+                    return;
+                }
+                var navBtn = t && t.closest ? t.closest('[data-lb-nav]') : null;
+                if (navBtn) {
+                    lbStep(Number(navBtn.getAttribute('data-lb-nav')) || 0);
+                }
+            });
+            lbImg.addEventListener('error', function () {
+                lbFailed = true;
+                if (lbCap) {
+                    lbCap.textContent = 'โหลดรูปไม่สำเร็จ (ไฟล์อาจถูกลบหรือไม่ได้แชร์)';
+                }
+            });
+            lbImg.addEventListener('load', function () {
+                lbFailed = false;
+                lbCaption();
+            });
+            document.body.appendChild(ov);
+            lbOverlay = ov;
+        }
+
+        function lbCaption() {
+            if (lbFailed || !lbCap || !lbItems.length) {
+                return;
+            }
+            var it = lbItems[lbIndex] || {};
+            lbCap.textContent = (it.label || 'รูปแนบ') + ' · ' +
+                (lbIndex + 1) + ' / ' + lbItems.length;
+        }
+
+        function lbShow(i) {
+            if (!lbItems.length || !lbOverlay) {
+                return;
+            }
+            lbIndex = (i + lbItems.length) % lbItems.length;
+            var it = lbItems[lbIndex];
+            lbFailed = false;
+            if (lbCap) {
+                lbCap.textContent = (it.label || 'รูปแนบ') + ' · ' +
+                    (lbIndex + 1) + ' / ' + lbItems.length;
+            }
+            if (lbOrig) {
+                lbOrig.href = it.src;
+            }
+            if (lbImg) {
+                lbImg.alt = it.label || 'รูปแนบ';
+                lbImg.src = it.src;
+            }
+            var multi = lbItems.length > 1;
+            if (lbPrev) {
+                lbPrev.hidden = !multi;
+            }
+            if (lbNext) {
+                lbNext.hidden = !multi;
+            }
+        }
+
+        function lbOpen(items, index) {
+            if (!items || !items.length) {
+                return;
+            }
+            lbEnsure();
+            lbItems = items;
+            document.body.style.overflow = 'hidden';
+            lbOverlay.hidden = false;
+            lbShow(index || 0);
+        }
+
+        function lbClose() {
+            if (!lbOverlay || lbOverlay.hidden) {
+                return;
+            }
+            lbOverlay.hidden = true;
+            document.body.style.overflow = '';
+            if (lbImg) {
+                lbImg.removeAttribute('src');
+            }
+            lbItems = [];
+        }
+
+        function lbStep(d) {
+            if (lbItems.length) {
+                lbShow(lbIndex + d);
+            }
+        }
+
+        function lbIsOpen() {
+            return !!(lbOverlay && !lbOverlay.hidden);
+        }
+
+        /* เปิดจากลิงก์รูปที่กด : เก็บรูปลิงก์พี่น้องในแถวเดียวกันเป็นกลุ่ม */
+        function lbOpenFrom(anchor) {
+            var box = (anchor && anchor.parentNode) || document;
+            var nodes = box.querySelectorAll
+                ? box.querySelectorAll('[data-lightbox]')
+                : [];
+            var items = [];
+            var at = 0;
+            Array.prototype.forEach.call(nodes, function (node, i) {
+                if (node === anchor) {
+                    at = i;
+                }
+                var img = node.querySelector ? node.querySelector('img') : null;
+                items.push({
+                    src: node.getAttribute('href') || '',
+                    label: (img && img.getAttribute('alt')) || 'รูปแนบ'
+                });
+            });
+            lbOpen(items, at);
+        }
+
+        /* สล็อตกลางให้ตัวดักคลิก/ปุ่มคีย์บอร์ดเรียก (ลงทะเบียนครั้งเดียวพอ
+           สคริปต์หน้านี้รันใหม่ทุกครั้งที่สลับหน้าเข้ามา) */
+        window.__dtamLightboxApi = {
+            openFrom: lbOpenFrom,
+            close: lbClose,
+            step: lbStep,
+            isOpen: lbIsOpen
+        };
+
+        if (!window.__dtamLightboxBound) {
+            window.__dtamLightboxBound = true;
+            document.addEventListener('click', function (ev) {
+                var t = ev.target && ev.target.closest
+                    ? ev.target.closest('a[data-lightbox]')
+                    : null;
+                var api = window.__dtamLightboxApi;
+                if (!t || !api) {
+                    return;
+                }
+                if (ev.preventDefault) {
+                    ev.preventDefault();
+                }
+                api.openFrom(t);
+            });
+            document.addEventListener('keydown', function (ev) {
+                var api = window.__dtamLightboxApi;
+                if (!api || !api.isOpen()) {
+                    return;
+                }
+                if (ev.key === 'Escape') {
+                    api.close();
+                } else if (ev.key === 'ArrowRight') {
+                    api.step(1);
+                } else if (ev.key === 'ArrowLeft') {
+                    api.step(-1);
+                }
+            });
         }
 
         /* ---------- ปฏิทินไทย (แสดง พ.ศ.) ---------- */
@@ -1432,6 +1653,7 @@
             dateCell: dateCell,
             statusBadge: statusBadge,
             photoCell: photoCell,
+            driveFull: driveFull,
             dialog: dialog,
             initShell: initShell,
             dateValue: dateValue,
