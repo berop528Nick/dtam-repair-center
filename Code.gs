@@ -893,6 +893,7 @@ function updateTicket(token, patch) {
       return HEADER_INDEX[header] + 1;
     };
     const curStatus = String(sheet.getRange(at, col('สถานะ')).getValue() || '').trim();
+    const curOwner = String(sheet.getRange(at, col('ผู้รับผิดชอบ')).getValue() || '').trim();
     const curAssigned = sheet.getRange(at, col('วันที่มอบหมาย')).getValue();
     const closedCell = sheet.getRange(at, col('วันที่ปิดงาน'));
     const now = new Date();
@@ -915,7 +916,9 @@ function updateTicket(token, patch) {
 
     const finalStatus = hasStatus ? status : curStatus;
 
-    if (owner && !curAssigned) {
+    /* มอบหมายครั้งแรก หรือเปลี่ยนตัวผู้รับผิดชอบ = ประทับวันมอบหมายใหม่
+       (เดิมประทับครั้งเดียว เปลี่ยนคนแล้ววันที่ยังเป็นของคนเก่า) */
+    if (owner && (!curAssigned || owner !== curOwner)) {
       sheet.getRange(at, col('วันที่มอบหมาย')).setValue(now);
     }
 
@@ -971,6 +974,32 @@ function equipmentSheet_() {
   });
 
   return sheet;
+}
+
+/**
+ * รายชื่อเจ้าหน้าที่ (สำหรับ datalist ช่องผู้รับผิดชอบในโมดัล)
+ * คืนเฉพาะชื่อที่ active — ไม่ส่ง salt/hash ออกไป
+ * @param {string} token
+ * @return {Object} { ok, staff } หรือ { ok:false, message }
+ */
+function getStaffList(token) {
+  if (!requireSession_(token)) {
+    return { ok: false, message: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่' };
+  }
+
+  const users = users_();
+  const staff = Object.keys(users)
+    .filter(function (key) {
+      return users[key].active;
+    })
+    .map(function (key) {
+      return users[key].name;
+    })
+    .sort(function (a, b) {
+      return String(a).localeCompare(String(b), 'th');
+    });
+
+  return { ok: true, staff: staff };
 }
 
 /**
