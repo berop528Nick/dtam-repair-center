@@ -48,7 +48,11 @@
             background: var(--page-bg);
         }
 
-        /* ---------- หน้าโหลดระหว่างรอ Google ตอบ -- */
+        /* ---------- หน้าโหลดระหว่างรอ Google ตอบ --
+           วงหมุนต้องอยู่จุดเดียวกับ .page-loader ข้างในแอป
+           (กลางพื้นที่เนื้อหา = กลางจอเลื่อนลงครึ่งแถบหัว) ไม่งั้นตอน
+           splash จางออกจะเห็นวงหมุนกระโดด — JS ด้านล่างตั้ง --head
+           ตามหน้าที่กำลังจะเปิด (ฟอร์ม 103/63/61px, แดชบอร์ด 48px) */
         .splash {
             position: fixed;
             top: 0;
@@ -60,7 +64,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 14px;
+            padding-top: var(--head, 0px);
             background: var(--page-bg);
             transition: opacity 0.28s ease;
         }
@@ -70,10 +74,17 @@
             pointer-events: none;
         }
 
+        /* ข้อความลอยใต้รูปวงหมุน ไม่ร่วมคิดความสูง (เหมือน .page-loader ข้างใน)
+           ไม่งั้นข้อความจะดันวงหมุนขึ้นจากกึ่งกลาง ~17px */
         .splash p {
+            position: absolute;
+            top: calc(50% + var(--head, 0px) / 2 + 18px + 12px);
+            left: 50%;
             margin: 0;
             color: var(--brand-green);
             font-size: 0.875rem;
+            white-space: nowrap;
+            transform: translateX(-50%);
         }
 
         .ring {
@@ -243,6 +254,26 @@
                    (โหลด iframe ใหม่ตอนนี้ = รีเฟรชแอปโดยไม่จำเป็น) */
                 refreshLinks();
             });
+
+            /* วงหมุน splash ต้องซ้อนทับวงหมุนของแอปพอดี : เลื่อนจุดกลาง splash
+               ลงครึ่งแถบหัวของหน้าที่กำลังจะเปิด (มี session = แดชบอร์ด 48px,
+               ไม่มี = ฟอร์มสาธารณะ 103/63/61px ตามเบรกพอยต์เดียวกับ Styles) */
+            function alignSplash() {
+                var head;
+                if (readSession()) {
+                    head = 48;
+                } else if (window.matchMedia('(min-width: 900px)').matches) {
+                    head = 103;
+                } else if (window.matchMedia('(min-width: 641px)').matches) {
+                    head = 63;
+                } else {
+                    head = 61;
+                }
+                splash.style.setProperty('--head', head + 'px');
+            }
+
+            alignSplash();
+            window.addEventListener('resize', alignSplash);
 
             var loaded = false;
 
