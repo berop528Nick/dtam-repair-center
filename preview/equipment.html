@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwghg6kh">
+    <link rel="stylesheet" href="assets/styles.css?v=mwghnlwi">
 </head>
 
 <body class="page-app">
@@ -350,7 +350,7 @@
     </div>
 </div>
 
-<script src="assets/app.js?v=mwghg6kh"></script>
+<script src="assets/app.js?v=mwghnlwi"></script>
 
 <script>
     window.PAGE_ID = 'equipment';
@@ -648,9 +648,27 @@
            แล้วค่อยเทียบกับ URL — เพราะบางเบราว์เซอร์/sandbox บล็อก pushState
            ทำให้ URL ค้างเป็นหน้าเก่า (เช่น รีเฟรชแล้วกดเมนูแจ้งปัญหา​จากแดชบอร์ด
            กลับถูกมองว่าอยู่หน้าฟอร์มแล้ว) ถ้าจำไว้เลยจะไม่หลงตาม URL ค้าง */
+        /* จำหน้าปัจจุบันข้ามการรีเฟรช : รีเฟรชแล้ว URL อาจค้างเป็นหน้าเก่า
+           (เช่น อยู่แดชบอร์ดแต่ URL ค้าง form.html?page=form) ถ้าจำไว้ใน sessionStorage
+           ซึ่งรอดรีเฟรชในแท็บเดิม ก็จะไม่หลงตาม URL ค้าง
+           เขียนทุกครั้งที่สลับสำเร็จ — ถ้าเขียนไม่ได้ (โดนบล็อก) ก็ใช้ URL ตามเดิม */
+        var PAGE_KEY = 'dtam:nav-page';
+        function storedPage() {
+            try {
+                return window.sessionStorage.getItem(PAGE_KEY) || '';
+            } catch (e) {
+                return '';
+            }
+        }
+        function rememberPage(key) {
+            try {
+                window.sessionStorage.setItem(PAGE_KEY, key);
+            } catch (e) { }
+        }
+
         function isSamePage(url) {
             try {
-                var here = nav.current || navKey(new URL(window.location.href));
+                var here = nav.current || storedPage() || navKey(new URL(window.location.href));
                 return navKey(url) === here;
             } catch (e) {
                 return false;
@@ -957,10 +975,11 @@
             /* รอบนี้ได้คำตอบแล้ว — ยกเลิกตัวจับเวลากันค้าง */
             clearNavTimeout();
 
-            /* จำหน้านี้ไว้ในหน่วยความจำเลย ไม่พึ่ง URL อย่างเดียว
+            /* จำหน้านี้ไว้เลย ไม่พึ่ง URL อย่างเดียว
                (pushState ด้านล่างอาจถูกบล็อกจน URL ค้างหน้าเก่า) */
             try {
                 nav.current = navKey(url);
+                rememberPage(nav.current);
             } catch (e) { }
 
             var root = document.documentElement;
