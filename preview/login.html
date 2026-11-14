@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwge6huy">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgg9jeu">
 </head>
 
 <body class="page-login">
@@ -773,7 +773,7 @@
     </div>
 </div>
 
-    <script src="assets/app.js?v=mwge6huy"></script>
+    <script src="assets/app.js?v=mwgg9jeu"></script>
 
     <script>
         (function () {
@@ -892,7 +892,19 @@
             return;
         }
 
-        var nav = window.__dtamNav = { busy: false, pending: '', timer: 0, waitTimer: 0, waitShownAt: 0 };
+        var nav = window.__dtamNav = { busy: false, pending: '', timer: 0, waitTimer: 0, waitShownAt: 0, timeout: 0 };
+
+        /* กันค้างเงียบ : เรียกเซิร์ฟเวอร์แล้วเงียบเกิน NAV_TIMEOUT_MS
+           (เน็ตหลุด/เซิร์ฟเวอร์ค้าง/ตอบกลับไม่มา) ให้เลิกสลับในที่เดียว
+           แล้วโหลดหน้าใหม่ตามปกติ — ดีกว่าปุ่มตายกดอะไรต่อไม่ได้เลย */
+        var NAV_TIMEOUT_MS = 20000;
+
+        function clearNavTimeout() {
+            if (nav.timeout) {
+                window.clearTimeout(nav.timeout);
+                nav.timeout = 0;
+            }
+        }
 
         /* ---------- สถานะกำลังโหลดตอนสลับหน้า ----------
            โชว์เมื่อรอเกิน 120ms (เร็วว่านั้นให้ดูเหมือนเปลี่ยนทันที ไม่มีสปินเนอร์วาบ)
@@ -1289,6 +1301,9 @@
            ตอนนี้สลับทันที (ยังดึง HTML ให้เสร็จก่อน เนื้อหาเดิมจึงไม่หายระหว่างรอเน็ต)
            แล้วขึ้นหน้าใหม่ที่ opacity เต็มในเฟรมถัดไป — ไม่มีเฟรมว่างเลย */
         function show(html, url, push) {
+            /* รอบนี้ได้คำตอบแล้ว — ยกเลิกตัวจับเวลากันค้าง */
+            clearNavTimeout();
+
             var root = document.documentElement;
 
             root.classList.add('is-nav');
@@ -1473,6 +1488,21 @@
 
             var token = nav.token;
 
+            clearNavTimeout();
+            nav.timeout = window.setTimeout(function () {
+                if (token !== nav.token) {
+                    return;
+                }
+                nav.timeout = 0;
+                /* เพิ่มรุ่นทิ้งผลที่อาจมาสายทีหลัง — หน้านี้กำลังจะโหลดใหม่แล้ว */
+                nav.token = (nav.token || 0) + 1;
+                document.documentElement.classList.remove('is-leaving');
+                endWait();
+                nav.busy = false;
+                nav.pending = '';
+                window.location.href = url.href;
+            }, NAV_TIMEOUT_MS);
+
             loadHtml(url, function (html) {
                 /* มีรอบใหม่แซงไปแล้ว (เช่น กดเมนูอื่นระหว่างรอ) — ทิ้งผลนี้ */
                 if (token !== nav.token) {
@@ -1491,6 +1521,7 @@
                    (ของเดิมจำไว้ ทำให้คลิกถัด ๆ ไปเป็นการโหลดใหม่ทั้งหน้า
                     = กระพริบทุกครั้งตลอดทั้งเซสชัน) */
                 document.documentElement.classList.remove('is-leaving');
+                clearNavTimeout();
                 endWait();
                 nav.busy = false;
                 window.location.href = url.href;
