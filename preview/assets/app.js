@@ -124,11 +124,22 @@
         var lbIndex = 0;
         var lbFailed = false;
         var lbOverlay = null;
+        var lbView = null;
         var lbImg = null;
         var lbCap = null;
         var lbOrig = null;
         var lbPrev = null;
         var lbNext = null;
+        var lbZoomLabel = null;
+        /* สถานะซูม/เลื่อน : ซูม 1 = พอดีจอ, สูงสุด 5 เท่า */
+        var lbZoom = 1;
+        var lbTx = 0;
+        var lbTy = 0;
+        var lbPointers = {};
+        var lbPinchD0 = 0;
+        var lbDragId = null;
+        var lbDragX = 0;
+        var lbDragY = 0;
 
         function lbEl(tag, cls, parent) {
             var el = document.createElement(tag);
@@ -155,9 +166,11 @@
             x.setAttribute('data-lb-close', '1');
             x.setAttribute('aria-label', 'ปิดรูป');
             x.textContent = '✕';
-            lbImg = lbEl('img', 'lightbox-img', box);
+            lbView = lbEl('div', 'lightbox-view', box);
+            lbImg = lbEl('img', 'lightbox-img', lbView);
             lbImg.setAttribute('alt', 'รูปแนบขนาดใหญ่');
             lbImg.setAttribute('referrerpolicy', 'no-referrer');
+            lbImg.draggable = false;
             lbCap = lbEl('figcaption', 'lightbox-cap', box);
             lbPrev = lbEl('button', 'lightbox-prev', box);
             lbPrev.setAttribute('data-lb-nav', '-1');
@@ -171,6 +184,111 @@
             lbOrig.setAttribute('target', '_blank');
             lbOrig.setAttribute('rel', 'noopener');
             lbOrig.textContent = 'เปิดต้นฉบับ';
+            /* แถบซูม : − / ตัวเลข% (กด = กลับขนาดพอดีจอ) / + */
+            var zoombar = lbEl('div', 'lightbox-zoombar', ov);
+            var zbOut = lbEl('button', 'lightbox-zbtn', zoombar);
+            zbOut.setAttribute('data-z', 'out');
+            zbOut.setAttribute('aria-label', 'ย่อรูป');
+            zbOut.textContent = '−';
+            lbZoomLabel = lbEl('button', 'lightbox-zbtn lightbox-zpct', zoombar);
+            lbZoomLabel.setAttribute('data-z', 'reset');
+            lbZoomLabel.setAttribute('aria-label', 'กลับขนาดพอดีจอ');
+            lbZoomLabel.textContent = '100%';
+            var zbIn = lbEl('button', 'lightbox-zbtn', zoombar);
+            zbIn.setAttribute('data-z', 'in');
+            zbIn.setAttribute('aria-label', 'ขยายรูป');
+            zbIn.textContent = '+';
+            zoombar.addEventListener('click', function (ev) {
+                var t = ev.target;
+                var btn = t && t.closest ? t.closest('[data-z]') : null;
+                if (!btn) {
+                    return;
+                }
+                var act = btn.getAttribute('data-z');
+                if (act === 'in') {
+                    lbZoomAt(1.25);
+                } else if (act === 'out') {
+                    lbZoomAt(1 / 1.25);
+                } else {
+                    lbZoomReset();
+                }
+            });
+            /* ล้อเมาส์ = ซูม (รวม pinch ของ trackpad ที่มาเป็น ctrl+wheel) */
+            lbView.addEventListener('wheel', function (ev) {
+                if (ev.preventDefault) {
+                    ev.preventDefault();
+                }
+                lbZoomAt((ev.deltaY || 0) < 0 ? 1.15 : 1 / 1.15);
+            }, { passive: false });
+            /* ดับเบิลคลิก = สลับขยาย 2.5 เท่า / กลับพอดีจอ */
+            lbImg.addEventListener('dblclick', function () {
+                if (lbZoom > 1) {
+                    lbZoomReset();
+                } else {
+                    lbZoom = 2.5;
+                    lbApplyZoom();
+                }
+            });
+            /* ลากเลื่อนรูปตอนซูม + หนีบนิ้วซูมบนจอสัมผัส (pointer events รวมเมาส์) */
+            lbImg.addEventListener('pointerdown', function (ev) {
+                if (ev.button !== undefined && ev.button !== 0) {
+                    return;
+                }
+                if (ev.preventDefault) {
+                    ev.preventDefault();
+                }
+                if (lbImg.setPointerCapture && ev.pointerId !== undefined) {
+                    try {
+                        lbImg.setPointerCapture(ev.pointerId);
+                    } catch (e) { }
+                }
+                var p = { x: ev.clientX || 0, y: ev.clientY || 0 };
+                lbPointers[ev.pointerId || 'm'] = p;
+                if (lbPointerCount() === 2) {
+                    lbPinchD0 = lbPointerDist();
+                    lbDragId = null;
+                } else if (lbZoom > 1) {
+                    lbDragId = ev.pointerId || 'm';
+                    lbDragX = p.x;
+                    lbDragY = p.y;
+                    lbImg.style.cursor = 'grabbing';
+                }
+            });
+            lbImg.addEventListener('pointermove', function (ev) {
+                var id = ev.pointerId || 'm';
+                if (!Object.prototype.hasOwnProperty.call(lbPointers, id)) {
+                    return;
+                }
+                lbPointers[id] = { x: ev.clientX || 0, y: ev.clientY || 0 };
+                if (lbPointerCount() === 2) {
+                    var d = lbPointerDist();
+                    if (lbPinchD0 > 0 && d > 0) {
+                        lbZoomAt(d / lbPinchD0);
+                    }
+                    lbPinchD0 = d;
+                } else if (id === lbDragId) {
+                    var p = lbPointers[id];
+                    lbTx += p.x - lbDragX;
+                    lbTy += p.y - lbDragY;
+                    lbDragX = p.x;
+                    lbDragY = p.y;
+                    lbApplyZoom();
+                }
+            });
+            function lbPtrEnd(ev) {
+                var id = ev.pointerId || 'm';
+                delete lbPointers[id];
+                if (lbPointerCount() < 2) {
+                    lbPinchD0 = 0;
+                }
+                if (id === lbDragId) {
+                    lbDragId = null;
+                    lbImg.style.cursor = '';
+                    lbApplyZoom();
+                }
+            }
+            lbImg.addEventListener('pointerup', lbPtrEnd);
+            lbImg.addEventListener('pointercancel', lbPtrEnd);
             ov.addEventListener('click', function (ev) {
                 var t = ev.target;
                 var closer = t && t.closest ? t.closest('[data-lb-close]') : null;
@@ -210,6 +328,13 @@
             if (!lbItems.length || !lbOverlay) {
                 return;
             }
+            /* เปลี่ยนใบ = เริ่มที่ขนาดพอดีจอทุกครั้ง */
+            lbZoom = 1;
+            lbTx = 0;
+            lbTy = 0;
+            lbPointers = {};
+            lbPinchD0 = 0;
+            lbDragId = null;
             lbIndex = (i + lbItems.length) % lbItems.length;
             var it = lbItems[lbIndex];
             lbFailed = false;
@@ -223,6 +348,7 @@
             if (lbImg) {
                 lbImg.alt = it.label || 'รูปแนบ';
                 lbImg.src = it.src;
+                lbApplyZoom();
             }
             var multi = lbItems.length > 1;
             if (lbPrev) {
@@ -248,6 +374,7 @@
             if (!lbOverlay || lbOverlay.hidden) {
                 return;
             }
+            lbZoomReset();
             lbOverlay.hidden = true;
             document.body.style.overflow = '';
             if (lbImg) {
@@ -260,6 +387,86 @@
             if (lbItems.length) {
                 lbShow(lbIndex + d);
             }
+        }
+
+        /* ---------- ซูม + เลื่อนรูป ---------- */
+        function lbPointerCount() {
+            var n = 0;
+            for (var k in lbPointers) {
+                if (Object.prototype.hasOwnProperty.call(lbPointers, k)) {
+                    n += 1;
+                }
+            }
+            return n;
+        }
+
+        function lbPointerDist() {
+            var pts = [];
+            for (var k in lbPointers) {
+                if (Object.prototype.hasOwnProperty.call(lbPointers, k)) {
+                    pts.push(lbPointers[k]);
+                }
+            }
+            if (pts.length < 2) {
+                return 0;
+            }
+            var dx = pts[0].x - pts[1].x;
+            var dy = pts[0].y - pts[1].y;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        /* ดันรูปไม่ให้หลุดกรอบ : อ่านขนาดจริงหลังขยายแล้วเทียบกับกรอบ */
+        function lbClampPan() {
+            if (lbZoom <= 1) {
+                lbTx = 0;
+                lbTy = 0;
+                return;
+            }
+            if (!lbImg || !lbView || !lbImg.getBoundingClientRect ||
+                !lbView.getBoundingClientRect) {
+                return;
+            }
+            var v = lbView.getBoundingClientRect();
+            var r = lbImg.getBoundingClientRect();
+            if (!v || !v.width || !v.height) {
+                return;
+            }
+            var dx = Math.max(0, (r.width - v.width) / 2);
+            var dy = Math.max(0, (r.height - v.height) / 2);
+            lbTx = Math.min(dx, Math.max(-dx, lbTx));
+            lbTy = Math.min(dy, Math.max(-dy, lbTy));
+        }
+
+        function lbApplyZoom() {
+            if (!lbImg) {
+                return;
+            }
+            lbClampPan();
+            lbImg.style.transform =
+                'translate(' + lbTx + 'px, ' + lbTy + 'px) scale(' + lbZoom + ')';
+            lbImg.style.cursor = lbZoom > 1 ? 'grab' : '';
+            if (lbZoomLabel) {
+                lbZoomLabel.textContent = Math.round(lbZoom * 100) + '%';
+            }
+        }
+
+        function lbZoomAt(factor) {
+            lbZoom = Math.min(5, Math.max(1, lbZoom * factor));
+            if (lbZoom <= 1) {
+                lbTx = 0;
+                lbTy = 0;
+            }
+            lbApplyZoom();
+        }
+
+        function lbZoomReset() {
+            lbZoom = 1;
+            lbTx = 0;
+            lbTy = 0;
+            lbPointers = {};
+            lbPinchD0 = 0;
+            lbDragId = null;
+            lbApplyZoom();
         }
 
         function lbIsOpen() {
@@ -293,7 +500,14 @@
             openFrom: lbOpenFrom,
             close: lbClose,
             step: lbStep,
-            isOpen: lbIsOpen
+            isOpen: lbIsOpen,
+            zoomIn: function () {
+                lbZoomAt(1.25);
+            },
+            zoomOut: function () {
+                lbZoomAt(1 / 1.25);
+            },
+            zoomReset: lbZoomReset
         };
 
         if (!window.__dtamLightboxBound) {
@@ -322,6 +536,12 @@
                     api.step(1);
                 } else if (ev.key === 'ArrowLeft') {
                     api.step(-1);
+                } else if (ev.key === '+' || ev.key === '=') {
+                    api.zoomIn();
+                } else if (ev.key === '-') {
+                    api.zoomOut();
+                } else if (ev.key === '0') {
+                    api.zoomReset();
                 }
             });
         }

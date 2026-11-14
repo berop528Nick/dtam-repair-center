@@ -2289,6 +2289,16 @@
         text-align: center;
     }
 
+    /* กรอบรูป : ตัดส่วนที่เลื่อนเกิน (ตอนซูมแล้วลาก) + กัน gesture เบราว์เซอร์แย่ง */
+    .lightbox-view {
+        overflow: hidden;
+        max-width: 100%;
+        max-height: 82vh;
+        border-radius: 8px;
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
+        touch-action: none;
+    }
+
     .lightbox-img {
         display: block;
         max-width: 100%;
@@ -2296,8 +2306,43 @@
         margin: 0 auto;
         background: #111;
         border-radius: 8px;
-        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
         object-fit: contain;
+        cursor: zoom-in;
+        user-select: none;
+        -webkit-user-drag: none;
+    }
+
+    /* แถบซูมล่างจอ : − / ตัวเลข% (กด = กลับพอดีจอ) / + */
+    .lightbox-zoombar {
+        position: fixed;
+        bottom: 18px;
+        left: 50%;
+        z-index: 121;
+        display: flex;
+        gap: 8px;
+        transform: translateX(-50%);
+    }
+
+    .lightbox-zbtn {
+        min-width: 42px;
+        height: 38px;
+        padding: 0 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #fff;
+        background: rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 999px;
+        cursor: pointer;
+    }
+
+    .lightbox-zbtn:hover {
+        background: rgba(255, 255, 255, 0.28);
+    }
+
+    .lightbox-zpct {
+        min-width: 64px;
+        font-size: 0.8125rem;
     }
 
     .lightbox-cap {
