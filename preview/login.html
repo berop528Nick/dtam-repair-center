@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwgj5mro">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgjeexu">
 </head>
 
 <body class="page-login">
@@ -773,7 +773,7 @@
     </div>
 </div>
 
-    <script src="assets/app.js?v=mwgj5mro"></script>
+    <script src="assets/app.js?v=mwgjeexu"></script>
 
     <script>
         (function () {
@@ -893,6 +893,42 @@
         }
 
         var nav = window.__dtamNav = { busy: false, pending: '', timer: 0, waitTimer: 0, waitShownAt: 0, timeout: 0, current: '' };
+
+        /* หน้านี้เรนเดอร์อะไรอยู่จริง : ดูจาก element ประจำหน้า
+           (login / form / track / dashboard / equipment อย่างละตัว ไม่ซ้ำกัน)
+           รีเฟรชหรือหน้ากากที่ฝัง iframe อาจโหลดหน้าใหม่ทั้งหน้าโดยไม่ผ่าน
+           show() — ค่าที่จำไว้ (nav.current/sessionStorage) กับ URL จะค้างเป็น
+           ของหน้าเดิม แล้วเมนูของหน้านั้นกดไม่ติด ต้องกดเมนูอื่นก่อนถึงจะหาย */
+        function actualPageKey() {
+            var page = '';
+
+            if (document.querySelector('.frm-login')) {
+                page = 'login';
+            } else if (document.querySelector('#repairForm')) {
+                page = 'form';
+            } else if (document.querySelector('#trackForm')) {
+                page = 'track';
+            } else if (document.querySelector('#equipBars')) {
+                page = 'dashboard';
+            } else if (document.querySelector('#tableBody')) {
+                page = 'equipment';
+            }
+
+            if (!page) {
+                return '';
+            }
+
+            try {
+                var here = new URL(window.location.href);
+                var file = String(here.pathname.split('/').pop() || '').toLowerCase();
+                var scope = String(here.searchParams.get('scope') || '').toLowerCase();
+                var no = String(here.searchParams.get('no') || '').toUpperCase();
+                return [file, page, scope, no].join('|');
+            } catch (e) {
+                return '';
+            }
+        }
+
 
         /* กันค้างเงียบ : เรียกเซิร์ฟเวอร์แล้วเงียบเกิน NAV_TIMEOUT_MS
            (เน็ตหลุด/เซิร์ฟเวอร์ค้าง/ตอบกลับไม่มา) ให้เลิกสลับในที่เดียว
@@ -1026,6 +1062,19 @@
                 return false;
             }
         }
+
+        /* ตั้งหน้าปัจจุบันจากของที่เรนเดอร์จริงตั้งแต่ตอนโหลด
+           (สคริปต์นี้รันใหม่เฉพาะตอนโหลดทั้งหน้า สลับหน้าในที่เดียวไม่มารันซ้ำ
+           เพราะติด guard __dtamNav ด้านบน — วางตรงนี้เพราะต้องรอ PAGE_KEY
+           ถูกกำหนดค่าก่อน ไม่งั้นจำลง sessionStorage ผิดช่อง) */
+        try {
+            var booted = actualPageKey();
+
+            if (booted) {
+                nav.current = booted;
+                rememberPage(booted);
+            }
+        } catch (e) { }
 
         function skip(link) {
             var target = (link.getAttribute('target') || '').toLowerCase();
