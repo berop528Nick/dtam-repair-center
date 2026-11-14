@@ -928,7 +928,8 @@ function searchTickets_(rows, want, contactRaw) {
     return { ticket: found };
   }
 
-  /* กรอกข้อมูลติดต่ออย่างเดียว — คืนรายการทุกใบที่ใช้ข้อมูลนี้ (ใหม่สุดก่อน) */
+  /* กรอกข้อมูลติดต่ออย่างเดียว — คืนรายการทุกใบที่ใช้ข้อมูลนี้
+     เรียง: งานที่ยังไม่ปิดก่อน แล้วตามวันที่แจ้งใหม่สุดก่อน */
   const hits = list.filter(function (ticket) {
     return contactMatches_(ticket, contactRaw);
   });
@@ -937,8 +938,19 @@ function searchTickets_(rows, want, contactRaw) {
     return { error: 'ไม่พบใบแจ้งปัญหาที่ใช้ข้อมูลติดต่อนี้' };
   }
 
+  hits.sort(function (a, b) {
+    const openA = (a.status === 'เสร็จสิ้น' || a.status === 'ยกเลิก') ? 1 : 0;
+    const openB = (b.status === 'เสร็จสิ้น' || b.status === 'ยกเลิก') ? 1 : 0;
+    if (openA !== openB) {
+      return openA - openB;
+    }
+    const timeA = a.reportedAt ? new Date(a.reportedAt).getTime() : 0;
+    const timeB = b.reportedAt ? new Date(b.reportedAt).getTime() : 0;
+    return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+  });
+
   return {
-    rows: hits.reverse().slice(0, 50).map(function (ticket) {
+    rows: hits.slice(0, 50).map(function (ticket) {
       return {
         no: ticket.no,
         reportedAt: ticket.reportedAt,

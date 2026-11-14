@@ -832,6 +832,27 @@
                     String(contactRaw).trim().toLowerCase();
             }
 
+            /* เรียงรายการใบแจ้ง: งานที่ยังไม่ปิดก่อน แล้วตามวันที่แจ้งใหม่สุดก่อน
+               (โหมดตัวอย่างใช้ตัวเดียวกับเซิร์ฟเวอร์ searchTickets_) */
+            function sortRowsOpenFirst(rows) {
+                return (rows || []).slice().sort(function (a, b) {
+                    var closedA = (a.status === 'เสร็จสิ้น' || a.status === 'ยกเลิก') ? 1 : 0;
+                    var closedB = (b.status === 'เสร็จสิ้น' || b.status === 'ยกเลิก') ? 1 : 0;
+                    if (closedA !== closedB) {
+                        return closedA - closedB;
+                    }
+                    var timeA = a.reportedAt ? new Date(a.reportedAt).getTime() : 0;
+                    var timeB = b.reportedAt ? new Date(b.reportedAt).getTime() : 0;
+                    if (isNaN(timeA)) {
+                        timeA = 0;
+                    }
+                    if (isNaN(timeB)) {
+                        timeB = 0;
+                    }
+                    return timeB - timeA;
+                });
+            }
+
             function renderTicket(ticket) {
                 setBusy(false);
                 conceal(searchArt);
@@ -971,8 +992,12 @@
                         }).filter(function (ticket) {
                             return contactOk(ticket, contactRaw);
                         });
-                        if (hits.length) {
-                            renderList(hits);
+                        /* เจอใบเดียวเปิดรายละเอียดทันที ไม่ต้องกดซ้ำ */
+                        if (hits.length === 1) {
+                            input.value = hits[0].no;
+                            renderTicket(hits[0]);
+                        } else if (hits.length) {
+                            renderList(sortRowsOpenFirst(hits));
                         } else {
                             renderNotFound('');
                         }
@@ -984,7 +1009,14 @@
                     if (res && res.ok && res.ticket) {
                         renderTicket(res.ticket);
                     } else if (res && res.ok && res.rows) {
-                        renderList(res.rows);
+                        /* เจอใบเดียวเปิดรายละเอียดทันที ไม่ต้องกดซ้ำ
+                           (คงสถานะกำลังค้นหาไว้จนใบนั้นโหลดเสร็จ) */
+                        if (res.rows.length === 1 && res.rows[0] && res.rows[0].no) {
+                            input.value = res.rows[0].no;
+                            lookup(normalize(res.rows[0].no), contactRaw);
+                        } else {
+                            renderList(res.rows);
+                        }
                     } else {
                         renderNotFound(no);
                     }
