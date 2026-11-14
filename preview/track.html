@@ -25,7 +25,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwgqk4og">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgqohhk">
     <style>
         /* ---------- หน้าติดตามสถานะ (สาธารณะ) ---------- */
 
@@ -1094,7 +1094,7 @@
         <p class="track-footer">© 2569 ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก</p>
     </main>
 
-    <script src="assets/app.js?v=mwgqk4og"></script>
+    <script src="assets/app.js?v=mwgqohhk"></script>
 
     <script>
         (function () {
@@ -1210,6 +1210,23 @@
                 searchBtn.disabled = searching;
                 searchBtn.classList.toggle('is-busy', searching);
                 searchBtn.textContent = searching ? 'กำลังตรวจสอบ' : 'ตรวจสอบสถานะ';
+            }
+
+            /* เริ่มเขียนเส้นใหม่ทุกครั้งที่ค้น: รีสตาร์ทอนิเมชันให้วิ่งจากบรรทัดแรก
+               (อนิเมชันเดินตั้งแต่เปิดหน้า ถ้าไม่รีสตาร์ท ตอนกดค้นจะเจอแค่วาดค้างไว้) */
+            function restartWrite() {
+                if (!searchArt || !searchArt.querySelectorAll) {
+                    return;
+                }
+                var lines = searchArt.querySelectorAll('.wline');
+                var i;
+                for (i = 0; i < lines.length; i++) {
+                    lines[i].style.animation = 'none';
+                }
+                void searchArt.offsetWidth;
+                for (i = 0; i < lines.length; i++) {
+                    lines[i].style.animation = '';
+                }
             }
 
             /* ---------- แสดง/ซ่อนแบบนุ่มนวล (วัดความสูงจริงก่อน animate) ---------- */
@@ -1521,6 +1538,7 @@
                 conceal(listCard);
                 conceal(notice);
                 setBusy(true);
+                restartWrite();
                 reveal(searchArt);
                 lookup(q);
             }
@@ -1585,6 +1603,7 @@
             if (preset) {
                 input.value = preset;
                 setBusy(true);
+                restartWrite();
                 reveal(searchArt);
                 lookup(preset);
             }
