@@ -231,11 +231,19 @@
                 return url;
             }
 
-            /* ตัวแอปส่ง session มาให้เมื่อล็อกอิน/เปลี่ยนหน้า/ออกจากระบบ */
+            /* ตัวแอปส่งสัญญาณมาให้ : ready = เริ่มทำงานแล้ว (ซ่อน splash ได้เลย),
+               session/logout = ล็อกอิน/เปลี่ยนหน้า/ออกจากระบบ */
             window.addEventListener('message', function (event) {
                 var data = event.data;
 
                 if (!data || data.dtam !== 'auth') {
+                    return;
+                }
+
+                /* แอปข้างในเรนเดอร์แล้ว (loader ขึ้นตรงจุดเดียวกับ splash)
+                   จาง splash ออกตอนนี้ = ไม่เห็นรอยต่อ */
+                if (data.type === 'ready') {
+                    hideSplash();
                     return;
                 }
 
@@ -292,7 +300,11 @@
 
             frame.addEventListener('load', function () {
                 loaded = true;
-                window.setTimeout(hideSplash, 150);
+
+                /* ปกติ splash จะถูกซ่อนด้วยสัญญาณ ready จากแอปข้างใน
+                   (จังหวะเดียวกับที่ loader ข้างในขึ้น) — ตัวจับเวลานี้เป็น
+                   แผนสำรอง เผื่อสัญญาณส่งมาไม่ถึง (เช่น ถูกบล็อก) */
+                window.setTimeout(hideSplash, 3000);
 
                 /* ตัวเว็บแอปของ Apps Script จะสร้าง frame ย่อยของตัวเอง 1 ชั้น
                    ถ้าโหลดเสร็จแล้วยังไม่มี frame ย่อย = Google ไม่ยอมให้ฝัง/ได้หน้า error
