@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwghnlwi">
+    <link rel="stylesheet" href="assets/styles.css?v=mwghtqmc">
     <style>
         /* ---------- ฟอร์มแจ้งปัญหา (หน้าเปิดสาธารณะ) ---------- */
 
@@ -764,15 +764,7 @@
             ติดตามสถานะ
         </a>
         <span class="divider" aria-hidden="true"></span>
-        <!-- ทางกลับหน้าแรกสำหรับเจ้าหน้าที่ (กันติดอยู่หน้าสาธารณะแล้วหาทางกลับไม่เจอ)
-             โชว์เฉพาะตอนล็อกอินอยู่ — ดูสคริปต์ท้ายไฟล์ -->
-        <a href="dashboard.html?page=dashboard" data-page="dashboard" id="navDashboard" style="display:none">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M3 10.5 12 3l9 7.5" />
-                <path d="M5 10v10h14V10" />
-            </svg>
-            หน้าแรก
-        </a>
+        
         <a class="btn-login" href="login.html?page=login">
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="8" r="4" />
@@ -801,13 +793,22 @@
     })();
 </script>
 <script>
-    /* เจ้าหน้าที่ที่ล็อกอินอยู่ เห็นทางกลับหน้าแรกด้วย (กันติดอยู่หน้าสาธารณะ
-       แล้วหาทางกลับไม่เจอ — เมนูแจ้งปัญหาตอนอยู่หน้าฟอร์มจะดูเหมือนกดไม่ติด) */
+    /* ล็อกอินอยู่แล้ว ปุ่ม "เจ้าหน้าที่เข้าสู่ระบบ" จะหลอกให้กดซ้ำ — แปลงร่างเป็น
+       ทางกลับหน้าแรกแทน (href + ป้าย + ไอคอน) กันติดอยู่หน้าสาธารณะแล้วหาทางกลับไม่เจอ */
     (function () {
         try {
             if (!window.__DTAM_TOKEN) return;
-            var link = document.getElementById('navDashboard');
-            if (link) link.style.display = '';
+            var btn = document.querySelector('.site-nav .btn-login');
+            if (!btn) return;
+            btn.setAttribute('href', 'dashboard.html?page=dashboard');
+            btn.innerHTML =
+                '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+
+                '<path d="M3 10.5 12 3l9 7.5" />' +
+
+                '<path d="M5 10v10h14V10" />' +
+
+                '</svg><span class="label">หน้าแรก</span>';
         } catch (e) { }
     })();
 </script>
@@ -1476,7 +1477,7 @@
     </div>
 </div>
 
-    <script src="assets/app.js?v=mwghnlwi"></script>
+    <script src="assets/app.js?v=mwghtqmc"></script>
 
     <script>
         window.LISTS = {"departments":["ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก","ศพท.เขตสุขภาพที่ 1 จ.ลำปาง","ศพท.เขตสุขภาพที่ 2 จ.สุโขทัย","ศพท.เขตสุขภาพที่ 3 จ.นครสวรรค์","ศพท.เขตสุขภาพที่ 4 จ.นนทบุรี สาขาตักศิลา","ศพท.เขตสุขภาพที่ 4 จ.นนทบุรี สาขาสยามมณี","ศพท.เขตสุขภาพที่ 5 จ.นครปฐม","ศพท.เขตสุขภาพที่ 6 จ.ฉะเชิงเทรา","ศพท.เขตสุขภาพที่ 7 จ.ขอนแก่น","ศพท.เขตสุขภาพที่ 8 จ.อุดรธานี","ศพท.เขตสุขภาพที่ 9 จ.สุรินทร์","ศพท.เขตสุขภาพที่ 10 จ.อุบลราชธานี","ศพท.เขตสุขภาพที่ 11 จ.ชุมพร","ศพท.เขตสุขภาพที่ 12 จ.พัทลุง","ศพท.เขตสุขภาพที่ 13 กรุงเทพมหานคร สาขายศเส","ศพท.เขตสุขภาพที่ 13 กรุงเทพมหานคร สาขาแจ้งวัฒนะ","ศพท.เขตสุขภาพที่ 13 กรุงเทพมหานคร สาขามีนบุรี","ศพท.เขตสุขภาพที่ 13 กรุงเทพมหานคร สาขารัฐสภา","อื่น ๆ"],"categories":["คอมพิวเตอร์/โน้ตบุ๊ก","จอภาพ/มอนิเตอร์","เครื่องพิมพ์/สแกนเนอร์","ระบบเครือข่าย/อินเทอร์เน็ต","โปรเจกเตอร์/ทีวี","เครื่องเสียง","ครุภัณฑ์สำนักงาน","อื่น ๆ"],"urgencies":["ปกติ","เร่งด่วน","ฉุกเฉิน"]};
