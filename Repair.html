@@ -1025,11 +1025,12 @@
             });
             syncChannel();
 
-            /* ไม่มีเลขครุภัณฑ์/เลขที่ */
+            /* ไม่มีเลขครุภัณฑ์/เลขที่ : ติ๊ก = ไม่บังคับใส่, ไม่ติ๊ก = บังคับใส่ */
             noCode.addEventListener('change', function () {
                 if (noCode.checked) {
                     itemCode.value = '';
                     itemCode.disabled = true;
+                    itemCode.classList.remove('is-invalid');
                     itemCode.placeholder = 'ไม่ระบุ (ไม่มีเลขครุภัณฑ์/เลขที่)';
                 } else {
                     itemCode.disabled = false;
@@ -1320,16 +1321,20 @@
                 { el: reporter, label: 'ชื่อผู้แจ้ง' }
             ];
 
-            /* เบอร์โทรกับไอดีไลน์ บังคับตามช่องทางที่เลือก */
+            /* เบอร์โทรกับไอดีไลน์ บังคับตามช่องทางที่เลือก
+               เลขครุภัณฑ์ บังคับเฉพาะตอนไม่ได้ติ๊ก "ไม่มีเลขครุภัณฑ์/เลขที่" */
             function requiredFields() {
                 var fields = required.slice();
                 fields.push(isLineChannel()
                     ? { el: lineId, label: 'ไอดีไลน์' }
                     : { el: phone, label: 'เบอร์โทรติดต่อ' });
+                if (!noCode.checked) {
+                    fields.push({ el: itemCode, label: 'เลขครุภัณฑ์/พัสดุ' });
+                }
                 return fields;
             }
 
-            required.concat([{ el: phone }, { el: lineId }, { el: email }]).forEach(function (item) {
+            required.concat([{ el: phone }, { el: lineId }, { el: email }, { el: itemCode }]).forEach(function (item) {
                 ['input', 'change'].forEach(function (type) {
                     item.el.addEventListener(type, function () {
                         if (item.el.value.trim()) {
@@ -1441,6 +1446,7 @@
                 phone.classList.remove('is-invalid');
                 lineId.classList.remove('is-invalid');
                 email.classList.remove('is-invalid');
+                itemCode.classList.remove('is-invalid');
 
                 /* ให้ radio กลับเป็นค่าเริ่มต้นก่อน แล้วค่อยซิงก์ช่อง */
                 setTimeout(syncChannel, 0);
