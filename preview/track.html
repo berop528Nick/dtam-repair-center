@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwgh2wzv">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgh9vc7">
     <style>
         /* ---------- หน้าติดตามสถานะ (สาธารณะ) ---------- */
 
@@ -1342,6 +1342,27 @@
 
         var nav = window.__dtamNav = { busy: false, pending: '', timer: 0, waitTimer: 0, waitShownAt: 0, timeout: 0, current: '' };
 
+        /* ---------- ป้ายบอกสถานะเมนู (ชั่วคราว — หาสาเหตุปุ่มกดไม่ติด) ----------
+           โชว์มุมขวาล่างว่ากดเมนูแล้วเกิดอะไรขึ้น : เห็นลิงก์ไหม, ไปต่อหรือหยุดเพราะอะไร
+           ถ้ากดแล้วป้ายไม่ขยับเลย = ตัวดักคลิกไม่ทำงานตั้งแต่แรก
+           (อ่านค่าแล้วจะถอดออกในเวอร์ชันถัดไป) */
+        var diagEl = null;
+        function diagNote(text) {
+            try {
+                if (!diagEl) {
+                    diagEl = document.createElement('div');
+                    diagEl.id = 'dtamNavDiag';
+                    diagEl.setAttribute('style', 'position:fixed;right:10px;bottom:10px;z-index:99999;' +
+                        'max-width:78vw;padding:8px 12px;border-radius:10px;background:rgba(20,40,30,.92);' +
+                        'color:#fff;font-size:12px;line-height:1.6;box-shadow:0 6px 18px rgba(0,0,0,.3);' +
+                        'pointer-events:none;white-space:pre-wrap;');
+                    document.documentElement.appendChild(diagEl);
+                }
+                diagEl.textContent = 'เมนู: ' + text;
+            } catch (e) { }
+        }
+        diagNote('พร้อม — กดเมนูได้เลย');
+
         /* กันค้างเงียบ : เรียกเซิร์ฟเวอร์แล้วเงียบเกิน NAV_TIMEOUT_MS
            (เน็ตหลุด/เซิร์ฟเวอร์ค้าง/ตอบกลับไม่มา) ให้เลิกสลับในที่เดียว
            แล้วโหลดหน้าใหม่ตามปกติ — ดีกว่าปุ่มตายกดอะไรต่อไม่ได้เลย */
@@ -1921,6 +1942,7 @@
                แต่ขยับขึ้นบนสุดนิดหนึ่งให้รู้ว่ากดติด (ไม่งั้นดูเหมือนปุ่มเสีย
                โดยเฉพาะกดเมนูแจ้งปัญหาตอนอยู่หน้าฟอร์มอยู่แล้ว) */
             if (isSamePage(url)) {
+                diagNote('อยู่หน้านี้แล้ว (' + (url.searchParams.get('page') || '?') + ') → ไม่โหลดซ้ำ');
                 try {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 } catch (e) {
@@ -1935,6 +1957,7 @@
                (เดิมคลิกหลุดเงียบ ๆ เหมือนเว็บค้าง) */
             if (nav.busy) {
                 nav.pending = url.href;
+                diagNote('รอหน้าก่อนหน้าก่อน → คิว ' + (url.searchParams.get('page') || '?'));
                 return;
             }
 
@@ -1968,15 +1991,18 @@
                 endWait();
                 nav.busy = false;
                 nav.pending = '';
+                diagNote('รอนานเกิน 20 วิ → โหลดใหม่ทั้งหน้า');
                 window.location.href = url.href;
             }, NAV_TIMEOUT_MS);
 
+            diagNote('กำลังดึงหน้า ' + (url.searchParams.get('page') || '?') + ' …');
             loadHtml(url, function (html) {
                 /* มีรอบใหม่แซงไปแล้ว (เช่น กดเมนูอื่นระหว่างรอ) — ทิ้งผลนี้ */
                 if (token !== nav.token) {
                     return;
                 }
 
+                diagNote('สลับไป ' + (url.searchParams.get('page') || '?') + ' แล้ว');
                 show(html, url, push);
             }, function () {
                 /* มีรอบใหม่แซงไปแล้ว : อย่าไปแตะสถานะของรอบนั้น */
@@ -1992,6 +2018,7 @@
                 clearNavTimeout();
                 endWait();
                 nav.busy = false;
+                diagNote('สลับในที่เดียวไม่ได้ → โหลดใหม่ทั้งหน้า');
                 window.location.href = url.href;
             });
         }
@@ -2004,17 +2031,24 @@
 
             var link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
 
-            if (!link || skip(link)) {
+            if (!link) {
+                return;
+            }
+
+            if (skip(link)) {
+                diagNote('กด ' + (link.getAttribute('href') || '?') + ' → ข้าม (ลิงก์พิเศษ)');
                 return;
             }
 
             var url = appUrl(link.href);
 
             if (!url) {
+                diagNote('กด ' + (link.getAttribute('href') || '?') + ' → ไม่ใช่ลิงก์ในแอป');
                 return;
             }
 
             event.preventDefault();
+            diagNote('กดไป ' + (url.searchParams.get('page') || '?') + ' …');
             go(url.href, true);
         }, true);
 
