@@ -1437,7 +1437,18 @@
 
     html.is-loaded .page-loader {
         opacity: 0;
-        transition: opacity 0.26s ease;
+        transition: opacity 0.26s ease, visibility 0s linear 0.3s;
+    }
+
+    /* โหลดเสร็จแล้ว : ซ่อนตัวหมุนที่โปร่งใสทิ้ง + หยุดวงหมุน ไม่ให้ compositor
+       ทำงานตลอดเวลา — ลดอาการวาบตอนสลับแท็บกลับมา + ประหยัดแบต
+       (ยกเว้นตอนกำลังสลับหน้า is-nav-wait ที่ต้องโชว์ตัวหมุนอยู่) */
+    html.is-loaded:not(.is-nav-wait) .page-loader {
+        visibility: hidden;
+    }
+
+    html.is-loaded:not(.is-nav-wait) .page-loader-ring {
+        animation: none;
     }
 
     .page-loader-ring {

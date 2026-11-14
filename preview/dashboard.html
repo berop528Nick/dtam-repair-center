@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwghtqmc">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgi0tev">
     <style>
         /* ---------- โมดัลจัดการใบแจ้ง ---------- */
         .edit-overlay {
@@ -516,7 +516,7 @@
     </div>
 </div>
 
-<script src="assets/app.js?v=mwghtqmc"></script>
+<script src="assets/app.js?v=mwgi0tev"></script>
 
 <script>
     window.PAGE_ID = new URLSearchParams(window.location.search).get('scope') === 'mine'
@@ -819,6 +819,22 @@
             return s;
         }
 
+        /* กันบาร์วาดซ้ำตอนข้อมูลเท่าเดิม : ทุกครั้งที่ innerHTML ถูกเขียนใหม่
+           แท่งจะหดเหลือ 0 แล้วค่อยขยาย = เห็นเป็นวูบวาบ (โดยเฉพาะตอนข้อมูลสรุปด่วน
+           มาก่อนแล้วแถวเต็มมาคำนวณทับอีกรอบด้วยเลขชุดเดียวกัน)
+           จำลายเซ็นครั้งล่าสุดไว้ ถ้าชื่อ+ยอดเหมือนเดิมก็ข้าม ไม่แตะ DOM เลย */
+        var lastBarsKey = null;
+        function barsUnchanged(list) {
+            var key = (list || []).map(function (item) {
+                return item.name + ':' + item.count;
+            }).join('|');
+            if (lastBarsKey !== null && key === lastBarsKey) {
+                return true;
+            }
+            lastBarsKey = key;
+            return false;
+        }
+
         /* วาดการ์ดสรุป + บาร์ + แท็กจากข้อมูลสรุปด่วน (ก้อนเล็กมาก่อน)
            เขียนค่าตรง ๆ ไม่รอแอนิเมชัน แล้วฝากค่าไว้ใน dataset
            พอแถวเต็มมา setStat ฝั่ง startWithRows จะแอนิเมชันต่อจากเลขนี้เอง */
@@ -902,7 +918,7 @@
 
             var bars = document.getElementById('equipBars');
             var top = s.top || [];
-            if (bars) {
+            if (bars && !barsUnchanged(top)) {
                 if (!top.length) {
                     bars.innerHTML =
                         '<li class="stat-bars-empty">ยังไม่มีงานที่ซ่อมเสร็จในช่วงนี้</li>';
@@ -1375,6 +1391,11 @@
            และข้อมูลแถวเต็ม — อย่างไหนมาก่อนก็วาดก่อน) */
         function paintBars(list) {
             if (!summaryNodes.bars) {
+                return;
+            }
+
+            /* ข้อมูลชุดเดียวกับรอบก่อน = ไม่วาดใหม่ (กันแท่งหดแล้วขยายวูบวาบ) */
+            if (barsUnchanged(list)) {
                 return;
             }
 
