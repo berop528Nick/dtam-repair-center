@@ -24,7 +24,7 @@
         href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
         rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles.css?v=mwgi0tev">
+    <link rel="stylesheet" href="assets/styles.css?v=mwgiu4bz">
     <style>
         /* ---------- โมดัลจัดการใบแจ้ง ---------- */
         .edit-overlay {
@@ -325,6 +325,19 @@
 
     <div class="page-heading">
         <span>ภาพรวมการแจ้งปัญหา</span>
+        <div class="noti-wrap">
+            <button type="button" id="notiBell" class="noti-bell" aria-label="ใบแจ้งใหม่" aria-expanded="false">
+                <svg class="noti-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 0 0 2 2zm6-6v-5a6 6 0 0 0-4.5-5.8V4.5a1.5 1.5 0 0 0-3 0v.7A6 6 0 0 0 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                <span class="noti-count" id="notiCount" hidden>0</span>
+            </button>
+            <div class="noti-panel" id="notiPanel" hidden>
+                <div class="noti-head">
+                    <strong>ใบแจ้งใหม่</strong>
+                    <button type="button" id="notiReadAll" class="noti-read">อ่านทั้งหมดแล้ว</button>
+                </div>
+                <ul class="noti-list" id="notiList"></ul>
+            </div>
+        </div>
     </div>
 
     <div class="page-body">
@@ -516,7 +529,7 @@
     </div>
 </div>
 
-<script src="assets/app.js?v=mwgi0tev"></script>
+<script src="assets/app.js?v=mwgiu4bz"></script>
 
 <script>
     window.PAGE_ID = new URLSearchParams(window.location.search).get('scope') === 'mine'
@@ -1188,6 +1201,363 @@
                 : ROWS;
         }
 
+        /* ---------- กระดิ่งใบแจ้งใหม่ + เช็กข้อมูลเงียบ ----------
+           จำเวลาล่าสุดที่ผู้ใช้ "อ่านแล้ว" แยกตามบัญชี (localStorage)
+           ใบที่แจ้งใหม่กว่าเวลานั้น = ยังไม่ได้อ่าน → โชว์ตัวเลขบนกระดิ่ง
+           + ชื่อแท็บ กดกระดิ่งดูรายการได้ กดรายการเปิดโมดัลใบนั้น
+           การเติมข้อมูลใหม่ทำเงียบ ๆ 2 ทางโดยไม่ต้องกดปุ่ม :
+           1) กลับเข้าแท็บ → เช็กทันที (ห่างจากรอบก่อนเกิน 1 นาที)
+           2) เปิดค้างไว้ → ทุก 3 นาทีถามสรุปก้อนเล็กก่อน
+              ยอดเปลี่ยนค่อยดึงแถวเต็มมาวาดทับ (คงตัวกรอง/หน้าเดิม)
+           กันชน : ข้ามรอบถ้าโมดัลเปิดอยู่ / โฟกัสอยู่ในช่องกรอก /
+           แท็บซ่อนอยู่ เช็กเงียบต้องไม่เปิด dialog — ล้มเหลวติดกัน
+           3 ครั้งให้หยุดเอง */
+
+        var notiBell = document.getElementById('notiBell');
+        var notiCount = document.getElementById('notiCount');
+        var notiPanel = document.getElementById('notiPanel');
+        var notiList = document.getElementById('notiList');
+        var notiReadAll = document.getElementById('notiReadAll');
+
+        var SEEN_KEY = 'dtam:lastseen:' +
+            String(window.CURRENT_USER || 'staff').toLowerCase();
+
+        function notiMaxReported(rows) {
+            var m = '';
+            for (var i = 0; i < rows.length; i += 1) {
+                var t = String(rows[i].reportedAt || '');
+                if (t > m) {
+                    m = t;
+                }
+            }
+            return m;
+        }
+
+        function notiGetSeen() {
+            try {
+                return window.localStorage.getItem(SEEN_KEY) || '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function notiSetSeen(v) {
+            try {
+                window.localStorage.setItem(SEEN_KEY, v);
+            } catch (e) { /* จำไม่ได้ก็ข้าม */ }
+        }
+
+        var lastSeen = notiGetSeen();
+        if (!lastSeen) {
+            /* เปิดครั้งแรก : ของเก่าทั้งหมดถือว่าอ่านแล้ว
+               เริ่มนับเฉพาะใบที่มาตอนเปิดอยู่จริง ๆ */
+            lastSeen = notiMaxReported(tableRows);
+            notiSetSeen(lastSeen);
+        }
+        var unreadList = [];
+        var prevUnread = 0;
+        var baseTitle = document.title;
+
+        function updateUnread(pulse) {
+            unreadList = tableRows.filter(function (r) {
+                return String(r.reportedAt || '') > lastSeen;
+            }).sort(function (a, b) {
+                var ta = String(a.reportedAt || '');
+                var tb = String(b.reportedAt || '');
+                return tb < ta ? -1 : tb > ta ? 1 : 0;
+            });
+            var n = unreadList.length;
+            if (notiCount) {
+                notiCount.textContent = n > 99 ? '99+' : String(n);
+                notiCount.hidden = n === 0;
+                if (pulse && n > prevUnread) {
+                    notiCount.classList.remove('is-pulse');
+                    /* บังคับรีโฟลว์ให้อนิเมชันเด้งเล่นใหม่ทุกครั้งที่ยอดเพิ่ม */
+                    void notiCount.offsetWidth;
+                    notiCount.classList.add('is-pulse');
+                }
+            }
+            document.title = (n > 0 ? '(' + (n > 99 ? '99+' : n) + ') ' : '') + baseTitle;
+            prevUnread = n;
+            renderNotiList();
+        }
+
+        function renderNotiList() {
+            if (!notiList) {
+                return;
+            }
+            if (!unreadList.length) {
+                notiList.innerHTML = '<li class="noti-empty">ไม่มีใบแจ้งใหม่</li>';
+                return;
+            }
+            var html = unreadList.slice(0, 20).map(function (r) {
+                return '<li><button type="button" class="noti-item" data-no="' +
+                    App.esc(r.no) + '">' +
+                    '<span class="noti-item-no">' + App.esc('เลขที่ ' + r.no) + '</span>' +
+                    '<span class="noti-item-sub">' +
+                    App.esc((r.reporter || '—') + ' · ' + (r.equipment || r.category || '—')) +
+                    '</span>' +
+                    '<span class="noti-item-time">' +
+                    App.esc(App.thaiDate(r.reportedAt) + ' ' + App.thaiTime(r.reportedAt)) +
+                    '</span></button></li>';
+            }).join('');
+            if (unreadList.length > 20) {
+                html += '<li class="noti-more">และอีก ' + (unreadList.length - 20) + ' ใบ</li>';
+            }
+            notiList.innerHTML = html;
+        }
+
+        function setNotiPanel(open) {
+            if (!notiPanel || !notiBell) {
+                return;
+            }
+            notiPanel.hidden = !open;
+            notiBell.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        if (notiBell) {
+            notiBell.addEventListener('click', function () {
+                setNotiPanel(!!(notiPanel && notiPanel.hidden));
+            });
+        }
+        if (notiReadAll) {
+            notiReadAll.addEventListener('click', function () {
+                lastSeen = notiMaxReported(tableRows) || new Date().toISOString();
+                notiSetSeen(lastSeen);
+                updateUnread(false);
+                setNotiPanel(false);
+            });
+        }
+        if (notiList) {
+            notiList.addEventListener('click', function (ev) {
+                var btn = ev.target && ev.target.closest
+                    ? ev.target.closest('[data-no]')
+                    : null;
+                if (!btn) {
+                    return;
+                }
+                setNotiPanel(false);
+                openEdit(btn.getAttribute('data-no'));
+            });
+        }
+
+        /* ปิดแผงเมื่อคลิกข้างนอก — ผูกระดับ document ครั้งเดียวพอ
+           (สคริปต์หน้านี้รันใหม่ทุกครั้งที่สลับหน้าเข้ามา) */
+        if (!window.__dtamNotiKeys) {
+            window.__dtamNotiKeys = true;
+            document.addEventListener('click', function (ev) {
+                var panel = document.getElementById('notiPanel');
+                var bell = document.getElementById('notiBell');
+                if (!panel || panel.hidden) {
+                    return;
+                }
+                if (bell && bell.contains(ev.target)) {
+                    return;
+                }
+                if (panel.contains(ev.target)) {
+                    return;
+                }
+                panel.hidden = true;
+                if (bell) {
+                    bell.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        function sigOfRows(rows) {
+            var p = 0, g = 0, d = 0, c = 0;
+            for (var i = 0; i < rows.length; i += 1) {
+                var s = String(rows[i].status || '');
+                if (s === 'เสร็จสิ้น') {
+                    d += 1;
+                } else if (s === 'กำลังดำเนินการ') {
+                    g += 1;
+                } else if (s === 'รอดำเนินการ') {
+                    p += 1;
+                } else if (s === 'ยกเลิก') {
+                    c += 1;
+                }
+            }
+            return [rows.length, p, g, d, c].join('|');
+        }
+
+        function sigOfStats(s) {
+            if (!s) {
+                return '';
+            }
+            return [s.total, s.pending, s.progress, s.done, s.cancel, s.monthDone].join('|');
+        }
+
+        var lastStatsSig = '';
+        var sigSeeded = false;
+        var lastCheckAt = Date.now();
+        var lastFullAt = Date.now();
+        var checkingNow = false;
+        var pollFails = 0;
+
+        function notePollFail() {
+            pollFails += 1;
+            if (pollFails >= 3) {
+                /* ล้มติดกัน 3 ครั้ง = น่าจะเน็ต/เซิร์ฟเวอร์มีปัญหา หยุดเช็กเอง */
+                if (window.__dtamPollTimer) {
+                    window.clearInterval(window.__dtamPollTimer);
+                    window.__dtamPollTimer = null;
+                }
+                window.__dtamPollCheck = null;
+            }
+        }
+
+        function fetchStatsSig() {
+            var run = (window.google && window.google.script && window.google.script.run) || null;
+            var token = App.auth.token();
+            if (!run || !token) {
+                return;
+            }
+            try {
+                run.withSuccessHandler(function (res) {
+                    if (res && res.ok) {
+                        lastStatsSig = sigOfStats(res);
+                        sigSeeded = true;
+                    }
+                }).getDashboardStats(token, onlyMine ? 'mine' : 'all',
+                    String(window.CURRENT_USER || ''));
+            } catch (e) { /* เช็กเงียบล้มเหลวเงียบ ๆ */ }
+        }
+
+        function fetchFullRows() {
+            var run = (window.google && window.google.script && window.google.script.run) || null;
+            var token = App.auth.token();
+            if (!run || !token || checkingNow) {
+                return;
+            }
+            checkingNow = true;
+            try {
+                run.withSuccessHandler(function (res) {
+                    checkingNow = false;
+                    if (!res || !res.ok || !res.rows) {
+                        notePollFail();
+                        return;
+                    }
+                    pollFails = 0;
+                    ROWS.length = 0;
+                    for (var i = 0; i < res.rows.length; i += 1) {
+                        ROWS.push(res.rows[i]);
+                    }
+                    refreshMine();
+                    tableApi.reload(tableRows);
+                    renderSummary();
+                    updateUnread(true);
+                    lastFullAt = Date.now();
+                    /* ซิงก์ลายเซ็นจากเซิร์ฟเวอร์ตรง ๆ (ไม่เทียบ client/server ข้ามกัน
+                       กันนิยาม scope เพี้ยนแล้วดึงซ้ำทุกรอบ) */
+                    fetchStatsSig();
+                }).withFailureHandler(function () {
+                    checkingNow = false;
+                    notePollFail();
+                }).getTickets(token);
+            } catch (e) {
+                checkingNow = false;
+            }
+        }
+
+        function checkForUpdates(reason) {
+            if (checkingNow) {
+                return;
+            }
+            var now = Date.now();
+            if (reason !== 'test' && now - lastCheckAt < 60000) {
+                return;
+            }
+            if (document.hidden) {
+                return;
+            }
+            var ov = document.getElementById('editOverlay');
+            if (ov && !ov.hidden) {
+                return;
+            }
+            var ae = document.activeElement;
+            if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' ||
+                ae.tagName === 'SELECT')) {
+                return;
+            }
+            var run = (window.google && window.google.script && window.google.script.run) || null;
+            if (!run) {
+                return;
+            }
+            var token = App.auth.token();
+            if (!token) {
+                return;
+            }
+            lastCheckAt = now;
+            checkingNow = true;
+            try {
+                run.withSuccessHandler(function (res) {
+                    checkingNow = false;
+                    if (!res || !res.ok) {
+                        notePollFail();
+                        return;
+                    }
+                    pollFails = 0;
+                    var sig = sigOfStats(res);
+                    if (!sigSeeded) {
+                        /* รอบแรกหลังเปิดหน้า : ข้อมูลเพิ่งสดจากตอนโหลด แค่จำลายเซ็นไว้ */
+                        sigSeeded = true;
+                        lastStatsSig = sig;
+                        return;
+                    }
+                    if (sig === lastStatsSig && now - lastFullAt <= 10 * 60 * 1000) {
+                        return;
+                    }
+                    fetchFullRows();
+                }).withFailureHandler(function () {
+                    checkingNow = false;
+                    notePollFail();
+                }).getDashboardStats(token, onlyMine ? 'mine' : 'all',
+                    String(window.CURRENT_USER || ''));
+            } catch (e) {
+                checkingNow = false;
+            }
+        }
+
+        /* ลงทะเบียนเช็กเงียบ : เคลียร์ของรอบก่อนก่อน (กัน timer ซ้อน
+           ตอนสลับหน้ากลับเข้ามา) + หยุดทุกอย่างก่อนสลับหน้าออก */
+        if (window.__dtamPollTimer) {
+            window.clearInterval(window.__dtamPollTimer);
+            window.__dtamPollTimer = null;
+        }
+        window.__dtamPollCheck = checkForUpdates;
+        window.__dtamPollTimer = window.setInterval(function () {
+            if (!document.hidden && window.__dtamPollCheck) {
+                try {
+                    window.__dtamPollCheck('tick');
+                } catch (e) { }
+            }
+        }, 3 * 60 * 1000);
+        /* hook สำหรับเรียกเช็กทันทีในคอนโซล : __dtamPollNow() */
+        window.__dtamPollNow = function () {
+            checkForUpdates('test');
+        };
+
+        if (!window.__dtamPollNavBound) {
+            window.__dtamPollNavBound = true;
+            window.addEventListener('dtam:before-navigate', function () {
+                if (window.__dtamPollTimer) {
+                    window.clearInterval(window.__dtamPollTimer);
+                    window.__dtamPollTimer = null;
+                }
+                window.__dtamPollCheck = null;
+            });
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden && window.__dtamPollCheck) {
+                    try {
+                        window.__dtamPollCheck('return');
+                    } catch (e) { }
+                }
+            });
+        }
+
+        updateUnread(false);
+
         if (editOverlay) {
             editOverlay.addEventListener('click', function (event) {
                 if (event.target === editOverlay) {
@@ -1210,6 +1580,15 @@
                 var ov = document.getElementById('editOverlay');
                 if (ov && !ov.hidden) {
                     ov.hidden = true;
+                    return;
+                }
+                var np = document.getElementById('notiPanel');
+                var nb = document.getElementById('notiBell');
+                if (np && !np.hidden) {
+                    np.hidden = true;
+                    if (nb) {
+                        nb.setAttribute('aria-expanded', 'false');
+                    }
                 }
             });
         }
@@ -1255,6 +1634,9 @@
                 tableApi.reload(tableRows);
                 closeEdit();
                 renderSummary();
+                /* สถานะ/ผู้รับผิดชอบเปลี่ยนอาจทำให้ใบหลุดจากมุมมอง
+                   (เช่น ย้ายงานออก) — ปรับตัวเลขนับยังไม่ได้อ่านตาม */
+                updateUnread(false);
             }).withFailureHandler(function (err) {
                 editSave.disabled = false;
                 editSave.textContent = 'บันทึก';
