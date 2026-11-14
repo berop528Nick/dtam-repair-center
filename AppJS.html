@@ -73,8 +73,8 @@
             return '<span class="status status--' + cls + '">' + esc(text || '—') + '</span>';
         }
 
-        /* รูปแนบในตาราง : โชว์รูปแรกเป็นภาพเล็ก + ป้ายจำนวนรูปที่เหลือ
-           (กดแล้วเปิดรูปต้นฉบับในแท็บใหม่ — รูปแบบเดียวกับหน้าติดตามสถานะ) */
+        /* รูปแนบในตาราง : โชว์รูปย่อครบทุกใบ (สูงสุด 3) ใบละลิงก์ของตัวเอง
+           กดใบไหนเปิดรูปต้นฉบับใบนั้นในแท็บใหม่ — รูปแบบเดียวกับหน้าติดตามสถานะ */
         function photoCell(photos) {
             var list = (photos || []).filter(function (url) {
                 return !!url;
@@ -82,13 +82,17 @@
             if (!list.length) {
                 return '<span class="no-photo">—</span>';
             }
-            var first = esc(list[0]);
-            var extra = list.length > 1
-                ? '<span class="photo-count">+' + (list.length - 1) + '</span>'
-                : '';
-            return '<a class="photo-thumb" href="' + first + '" target="_blank" rel="noopener"' +
-                ' title="เปิดดูรูปแนบ (' + list.length + ' รูป)">' +
-                '<img src="' + first + '" alt="รูปแนบ" loading="lazy">' + extra + '</a>';
+            var shown = list.slice(0, 3);
+            var html = '<span class="photo-thumbs">' + shown.map(function (url, i) {
+                var safe = esc(url);
+                return '<a class="photo-thumb" href="' + safe + '" target="_blank" rel="noopener"' +
+                    ' title="เปิดดูรูปแนบที่ ' + (i + 1) + ' (ทั้งหมด ' + list.length + ' รูป)">' +
+                    '<img src="' + safe + '" alt="รูปแนบที่ ' + (i + 1) + '" loading="lazy"></a>';
+            }).join('') + '</span>';
+            if (list.length > shown.length) {
+                html += '<span class="photo-count">+' + (list.length - shown.length) + '</span>';
+            }
+            return html;
         }
 
         /* ---------- ปฏิทินไทย (แสดง พ.ศ.) ---------- */
