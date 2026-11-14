@@ -1,0 +1,19 @@
+# .claspignore — ไฟล์ที่ `clasp push` จะอัปโหลดขึ้น Apps Script
+# ใช้วิธี "ปิดทุกอย่างก่อน แล้วเปิดเฉพาะไฟล์ที่โปรเจกต์ต้องใช้"
+# เพื่อไม่ให้ไฟล์เอกสาร รูปต้นฉบับ หรือไฟล์ชั่วคราวหลุดขึ้นไปบน Apps Script
+**/**
+
+!appsscript.json
+!Code.gs
+!Repair.html
+!Track.html
+!Login.html
+!Dashboard.html
+!Equipment.html
+!Brand.html
+!PubHead.html
+!Shell.html
+!Styles.html
+!NavJS.html
+!AppJS.html
+!Dialog.html

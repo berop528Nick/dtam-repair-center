@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>รายละเอียดครุภัณฑ์ · ระบบแจ้งปัญหาคอมพิวเตอร์และอุปกรณ์</title>
+    <meta name="theme-color" content="#1a7a44">
+    <!-- สีพื้นตั้งต้น: ให้หน้าใหม่มีพื้นสีแอปตั้งแต่เพนต์แรก กันจอขาวแวบตอนเปลี่ยนหน้า
+         (ค่าตรงกับ --body-bg ใน Styles.html) -->
+    <style>html{background-color:#f4f7f9}</style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- ฟอนต์: preload เฉพาะไฟล์ Kanit ที่ใช้จริง (ชุดไทย/ละติน 2 น้ำหนัก) + display=optional
+         ถ้าฟอนต์ยังไม่พร้อมภายใน ~100ms หน้าจะใช้ฟอนต์สำรองทั้งหน้า และ "ไม่สลับกลางหน้า"
+         จึงไม่มีอาการฟ้อนเพี้ยนระหว่างโหลด (เดิมใช้ swap = เห็นฟอนต์เปลี่ยนกลางหน้า) -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKZ-Go6G5tXcraBGwCYdA.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKZ-Go6G5tXcraVGwA.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWzVaF5NQ.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
+        rel="stylesheet">
+    <?!= include('Styles') ?>
+</head>
+
+<body class="page-app">
+
+    <?!= include('Shell') ?>
+
+    <div class="page-heading">
+        <span>รายละเอียดครุภัณฑ์</span>
+    </div>
+
+    <div class="page-body">
+        <section class="table-card">
+            <div class="table-toolbar">
+                <div class="toolbar-left">
+                    <div class="entries">
+                        Show
+                        <select id="pageSize" aria-label="จำนวนแถวต่อหน้า">
+                            <option value="7" selected>7</option>
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                        entries
+                    </div>
+                    <div class="export-btns">
+                        <button type="button" data-export="pdf">PDF</button>
+                        <button type="button" data-export="excel">Excel</button>
+                    </div>
+                </div>
+                <label class="search-box" for="searchInput">
+                    <span>Search:</span>
+                    <input type="search" id="searchInput" autocomplete="off">
+                </label>
+            </div>
+
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead id="tableHead">
+                        <tr>
+                            <th class="col-no">#</th>
+                            <th data-sort="equipCode">เลขครุภัณฑ์</th>
+                            <th data-sort="name">ชื่อครุภัณฑ์</th>
+                            <th data-sort="category">หมวดหมู่</th>
+                            <th data-sort="department">หน่วยงาน</th>
+                            <th data-sort="owner">ผู้ครอบครอง</th>
+                            <th data-sort="acquiredAt">วันที่ขึ้นทะเบียน</th>
+                            <th data-sort="status">สถานะ</th>
+                            <th class="col-action">#</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="table-footer">
+                <span id="tableInfo"></span>
+                <div class="pager" id="pager"></div>
+            </div>
+        </section>
+    </div>
+
+    </main><!-- /.app-main -->
+</div><!-- /.shell -->
+
+<footer class="app-footer">
+    <span>Copyright © 2569 ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก · All rights reserved.</span>
+    <span>Version 1.0.0</span>
+</footer>
+
+<?!= include('Dialog') ?>
+<?!= include('AppJS') ?>
+
+<script>
+    window.PAGE_ID = 'equipment';
+    window.CURRENT_USER = '<?= currentUser ?>';
+</script>
+
+<script>
+    (function () {
+        'use strict';
+
+        /* ต้องล็อกอินก่อน : ไม่มี token หรือหมดอายุ = กลับไปหน้า login */
+        if (!App.auth.require()) {
+            return;
+        }
+
+        /* ---------- ข้อมูลสำรองสำหรับโหมดตัวอย่าง (ไม่มี Apps Script) ---------- */
+        var DEMO_ROWS = [
+            {
+                equipCode: '7440-001-0001', name: 'คอมพิวเตอร์ตั้งโต๊ะ (Dell OptiPlex)',
+                category: 'คอมพิวเตอร์/โน้ตบุ๊ก', department: 'ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก',
+                owner: 'สมชาย ใจดี', acquiredAt: '2023-04-12', status: 'ใช้งาน'
+            },
+            {
+                equipCode: '7440-002-0015', name: 'เครื่องพิมพ์เลเซอร์ HP LaserJet',
+                category: 'เครื่องพิมพ์/สแกนเนอร์', department: 'ศพท.เขตสุขภาพที่ 5 จ.นครปฐม',
+                owner: 'ปวีณา สุขศรี', acquiredAt: '2022-11-08', status: 'ส่งซ่อม'
+            },
+            {
+                equipCode: '7440-003-0007', name: 'โปรเจกเตอร์ Epson EB-X06',
+                category: 'โปรเจกเตอร์/ทีวี', department: 'ศพท.เขตสุขภาพที่ 7 จ.ขอนแก่น',
+                owner: 'อรุณี พรหมมา', acquiredAt: '2024-01-25', status: 'ใช้งาน'
+            },
+            {
+                equipCode: '7440-004-0021', name: 'เครื่องปรับอากาศ Carrier 18,000 BTU',
+                category: 'ครุภัณฑ์สำนักงาน', department: 'ศพท.เขตสุขภาพที่ 4 จ.นนทบุรี สาขาตักศิลา',
+                owner: 'ช่างประจำอาคาร', acquiredAt: '2021-06-30', status: 'ชำรุด'
+            },
+            {
+                equipCode: '7440-005-0003', name: 'โน้ตบุ๊ก ASUS VivoBook',
+                category: 'คอมพิวเตอร์/โน้ตบุ๊ก', department: 'ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก',
+                owner: 'ผู้อำนวยการ', acquiredAt: '2024-08-19', status: 'ใช้งาน'
+            },
+            {
+                equipCode: '7440-006-0011', name: 'เครื่องเสียงห้องประชุม',
+                category: 'เครื่องเสียง', department: 'ศพท.เขตสุขภาพที่ 2 จ.สุโขทัย',
+                owner: 'ธุรการกลาง', acquiredAt: '2020-02-14', status: 'จำหน่าย'
+            },
+            {
+                equipCode: '7440-007-0002', name: 'จอภาพ LED 24 นิ้ว',
+                category: 'จอภาพ/มอนิเตอร์', department: 'ศพท.เขตสุขภาพที่ 1 จ.ลำปาง',
+                owner: 'พีรวิชญ์ นวลทอง', acquiredAt: '2025-03-03', status: 'ใช้งาน'
+            },
+            {
+                equipCode: '7440-008-0009', name: 'สแกนเนอร์ Fujitsu fi-7160',
+                category: 'เครื่องพิมพ์/สแกนเนอร์', department: 'ศพท.เขตสุขภาพที่ 9 จ.สุรินทร์',
+                owner: 'ปวีณา สุขศรี', acquiredAt: '2022-07-11', status: 'ใช้งาน'
+            }
+        ];
+
+        /* ---------- โหลดข้อมูลจริงจากชีต ---------- */
+        function loadRows(done) {
+            var run = (window.google && window.google.script && window.google.script.run) || null;
+            var token = App.auth.token();
+
+            /* ไม่มีเซิร์ฟเวอร์ (preview / GitHub Pages) = โหมดตัวอย่าง */
+            if (!run) {
+                done(DEMO_ROWS);
+                return;
+            }
+
+            if (!token) {
+                App.auth.signOut();
+                return;
+            }
+
+            document.body.classList.add('is-loading');
+
+            /* ในโหมดเชื่อมต่อชีต : แสดงตามข้อมูลจริงเท่านั้น (ชีตว่าง = ตารางว่าง) */
+            try {
+                run.withSuccessHandler(function (res) {
+                    document.body.classList.remove('is-loading');
+
+                    if (!res || !res.ok) {
+                        App.dialog('เซสชันหมดอายุ', (res && res.message) || 'กรุณาเข้าสู่ระบบใหม่');
+                        App.auth.signOut();
+                        return;
+                    }
+
+                    done(res.rows || []);
+                }).withFailureHandler(function (err) {
+                    document.body.classList.remove('is-loading');
+                    App.dialog('ดึงข้อมูลครุภัณฑ์จากชีตไม่สำเร็จ', String((err && err.message) || err));
+                    done([]);
+                }).getEquipmentItems(token);
+            } catch (e) {
+                document.body.classList.remove('is-loading');
+                App.dialog('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', String((e && e.message) || e));
+                done([]);
+            }
+        }
+
+        /* ---------- ส่วนแสดงผล : เริ่มเมื่อได้ข้อมูลแล้ว ---------- */
+        function startWithRows(ROWS) {
+
+        var columns = [
+            { key: 'equipCode', label: 'เลขครุภัณฑ์' },
+            { key: 'name', label: 'ชื่อครุภัณฑ์' },
+            { key: 'category', label: 'หมวดหมู่' },
+            { key: 'department', label: 'หน่วยงาน' },
+            { key: 'owner', label: 'ผู้ครอบครอง' },
+            {
+                key: 'acquiredAt',
+                label: 'วันที่ขึ้นทะเบียน',
+                render: function (row) { return App.thaiDate(row.acquiredAt); },
+                text: function (row) { return App.thaiDate(row.acquiredAt); }
+            },
+            {
+                key: 'status',
+                label: 'สถานะ',
+                render: function (row) { return App.statusBadge(row.status); }
+            }
+        ];
+
+        document.querySelectorAll('[data-user-name]').forEach(function (el) {
+            el.textContent = window.CURRENT_USER || 'ผู้ใช้งาน';
+        });
+
+        App.initShell();
+
+        App.table({
+            theadId: 'tableHead',
+            tbodyId: 'tableBody',
+            infoId: 'tableInfo',
+            pagerId: 'pager',
+            searchId: 'searchInput',
+            pageSizeId: 'pageSize',
+            keyField: 'equipCode',
+            columns: columns,
+            rows: ROWS,
+            defaultSort: 'equipCode',
+            exportName: 'equipment-list.csv',
+            actionTitle: 'ดูรายละเอียดครุภัณฑ์',
+            onAction: function (code) {
+                var item = null;
+                ROWS.forEach(function (row) {
+                    if (String(row.equipCode) === String(code)) {
+                        item = row;
+                    }
+                });
+                if (!item) {
+                    App.dialog('ไม่พบข้อมูล', 'ไม่พบครุภัณฑ์เลขที่ ' + code);
+                    return;
+                }
+                App.dialog(item.equipCode + ' · ' + item.name,
+                    'หมวดหมู่: ' + (item.category || '—') +
+                    '\nหน่วยงาน: ' + (item.department || '—') +
+                    '\nผู้ครอบครอง: ' + (item.owner || '—') +
+                    '\nวันที่ขึ้นทะเบียน: ' + App.thaiDate(item.acquiredAt) +
+                    '\nสถานะ: ' + (item.status || '—'));
+            }
+        });
+        }
+
+        loadRows(startWithRows);
+    })();
+</script>
+
+<?!= include('NavJS') ?>
+</body>
+
+</html>

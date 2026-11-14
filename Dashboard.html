@@ -94,7 +94,7 @@
             </div>
         </form>
 
-        <section class="summary" id="summary" aria-label="สรุปงานซ่อม">
+        <section class="summary is-loading-sec" id="summary" aria-label="สรุปงานซ่อม">
             <div class="summary-head">
                 <h2 class="summary-title">สรุปงาน</h2>
                 <span class="summary-period" id="summaryPeriod">ทุกช่วงเวลา</span>
@@ -199,7 +199,7 @@
             </div>
 
             <div class="table-footer">
-                <span id="tableInfo"></span>
+                <span id="tableInfo">กำลังโหลดข้อมูล…</span>
                 <div class="pager" id="pager"></div>
             </div>
         </section>
@@ -266,6 +266,17 @@
         if (!App.auth.require()) {
             return;
         }
+
+        /* ชื่อผู้ใช้ + นาฬิกาเป็นข้อมูลในเครื่อง ใส่ทันที ไม่ต้องรอเน็ต
+           (เดิมถูกกักไว้ใน startWithRows = ต้องรอ getTickets เสร็จก่อน
+           จึงเห็น "—" กับ "ผู้ใช้งาน" ค้างอยู่นาน) */
+        document.querySelectorAll('[data-user-name]').forEach(function (el) {
+            el.textContent = window.CURRENT_USER || 'ผู้ใช้งาน';
+        });
+
+        App.initShell();
+
+        showSkeletons();
 
         /* ---------- ขอบเขตข้อมูล: ภาพรวม หรือ งานของฉัน ---------- */
         var scope = new URLSearchParams(window.location.search).get('scope');
@@ -410,6 +421,44 @@
             return rows;
         }
 
+        /* ---------- โครงร่างรอโหลดรายส่วน ----------
+           ตาราง + บาร์สรุปต้องรอเน็ต ฉีดแถบวิบวับไว้ก่อน
+           พอ App.table / renderSummary วาดทับ แถบพวกนี้จะหายไปเอง */
+        function showSkeletons() {
+            var body = document.getElementById('tableBody');
+            if (body && !body.rows.length) {
+                var widths = [10, 26, 20, 16, 12, 14, 14, 12, 14, 12, 8];
+                var html = '';
+                for (var r = 0; r < 7; r += 1) {
+                    html += '<tr class="skel-row" aria-hidden="true">';
+                    for (var c = 0; c < widths.length; c += 1) {
+                        html += '<td><span class="skel-bar" style="width:' +
+                            widths[c] + '%"></span></td>';
+                    }
+                    html += '</tr>';
+                }
+                body.innerHTML = html;
+            }
+
+            var card = document.querySelector('.table-card');
+            if (card) {
+                card.setAttribute('aria-busy', 'true');
+            }
+
+            var bars = document.getElementById('equipBars');
+            if (bars && !bars.children.length) {
+                var barsHtml = '';
+                var barWidths = [55, 80, 40];
+                for (var b = 0; b < barWidths.length; b += 1) {
+                    barsHtml += '<li class="skel-row" aria-hidden="true">' +
+                        '<span class="skel-bar" style="width:' + barWidths[b] + '%"></span>' +
+                        '<span class="skel-bar"></span>' +
+                        '<span class="skel-bar" style="width:45%"></span></li>';
+                }
+                bars.innerHTML = barsHtml;
+            }
+        }
+
         /* ---------- โหลดข้อมูลจริงจากชีต ----------
            โหมดตัวอย่าง (preview / ไม่มี Apps Script) ใช้ข้อมูลที่สุ่มในหน้านี้แทน */
         function loadRows(done) {
@@ -427,14 +476,10 @@
                 return;
             }
 
-            document.body.classList.add('is-loading');
-
             /* ในโหมดเชื่อมต่อชีต : แสดงตามข้อมูลจริงเท่านั้น (ชีตว่าง = ตารางว่าง)
                ไม่เติมข้อมูลตัวอย่างเข้าไป เพราะจะเข้าใจผิดว่าเป็นข้อมูลจริง */
             try {
                 run.withSuccessHandler(function (res) {
-                    document.body.classList.remove('is-loading');
-
                     if (!res || !res.ok) {
                         App.dialog('เซสชันหมดอายุ', (res && res.message) || 'กรุณาเข้าสู่ระบบใหม่');
                         App.auth.signOut();
@@ -458,12 +503,10 @@
 
                     done(res.rows || []);
                 }).withFailureHandler(function (err) {
-                    document.body.classList.remove('is-loading');
                     App.dialog('ดึงข้อมูลจากชีตไม่สำเร็จ', String((err && err.message) || err));
                     done([]);
                 }).getTickets(token);
             } catch (e) {
-                document.body.classList.remove('is-loading');
                 App.dialog('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', String((e && e.message) || e));
                 done([]);
             }
@@ -471,6 +514,13 @@
 
         /* ---------- ส่วนแสดงผล : เริ่มเมื่อได้ข้อมูลแล้ว ---------- */
         function startWithRows(ROWS) {
+
+        /* ข้อมูลมาแล้ว : ถอดโครงร่างรอโหลดของส่วนสรุปออก
+           (โครงในตารางถูก App.table วาดทับหายไปเอง) */
+        var summarySec = document.getElementById('summary');
+        if (summarySec) {
+            summarySec.classList.remove('is-loading-sec');
+        }
 
         /* กรองเฉพาะงานที่มอบหมายให้ผู้ใช้ที่ล็อกอิน (ใช้ในเมนู "งานของฉัน") */
         var tableRows = onlyMine
@@ -526,12 +576,7 @@
             }
         ];
 
-        document.querySelectorAll('[data-user-name]').forEach(function (el) {
-            el.textContent = window.CURRENT_USER || 'ผู้ใช้งาน';
-        });
-
-        App.initShell();
-
+        /* ชื่อผู้ใช้ + initShell ย้ายไปทำตั้งแต่ก่อนรอเน็ตแล้ว (ดูต้นสคริปต์) */
         var tableApi = App.table({
             theadId: 'tableHead',
             tbodyId: 'tableBody',
@@ -552,6 +597,11 @@
                 openEdit(no);
             }
         });
+
+        var tableCard = document.querySelector('.table-card');
+        if (tableCard) {
+            tableCard.removeAttribute('aria-busy');
+        }
 
         /* ---------- โมดัลจัดการใบแจ้ง (เปลี่ยนสถานะ/มอบหมาย/ปิดงาน) ---------- */
 

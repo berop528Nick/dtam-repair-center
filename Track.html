@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ติดตามสถานะ · ระบบแจ้งปัญหาคอมพิวเตอร์และอุปกรณ์</title>
+    <meta name="theme-color" content="#1a7a44">
+    <!-- สีพื้นตั้งต้น: ให้หน้าใหม่มีพื้นสีแอปตั้งแต่เพนต์แรก กันจอขาวแวบตอนเปลี่ยนหน้า
+         (ค่าตรงกับ --body-bg ใน Styles.html) -->
+    <style>html{background-color:#f4f7f9}</style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- ฟอนต์: preload เฉพาะไฟล์ Kanit ที่ใช้จริง (ชุดไทย/ละติน 2 น้ำหนัก) + display=optional
+         ถ้าฟอนต์ยังไม่พร้อมภายใน ~100ms หน้าจะใช้ฟอนต์สำรองทั้งหน้า และ "ไม่สลับกลางหน้า"
+         จึงไม่มีอาการฟ้อนเพี้ยนระหว่างโหลด (เดิมใช้ swap = เห็นฟอนต์เปลี่ยนกลางหน้า) -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKZ-Go6G5tXcraBGwCYdA.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKZ-Go6G5tXcraVGwA.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWzVaF5NQ.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
+        rel="stylesheet">
+    <?!= include('Styles') ?>
+    <style>
+        /* ---------- หน้าติดตามสถานะ (สาธารณะ) ---------- */
+
+        body.track-page {
+            padding-bottom: 40px;
+            background:
+                radial-gradient(900px 380px at 50% -80px, rgba(26, 122, 68, 0.10), transparent 70%),
+                linear-gradient(180deg, #f5faf7 0%, #f1f5f3 240px, #f4f6f5 100%);
+        }
+
+        .form-wrap {
+            width: 100%;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        .hero {
+            padding: 26px 8px 20px;
+            text-align: center;
+        }
+
+        .hero .brand-logo {
+            width: 150px;
+            height: auto;
+        }
+
+        .hero h1 {
+            margin: 14px 0 6px;
+            font-size: 1.35rem;
+            font-weight: 500;
+            color: #22463a;
+        }
+
+        .hero p {
+            margin: 0;
+            font-size: 0.8125rem;
+            line-height: 1.7;
+            color: #6b7c87;
+        }
+
+        /* ---------- ช่องค้นหา ---------- */
+
+        .search-card {
+            padding: 18px 20px;
+            background: #fff;
+            border: 1px solid #e4ece8;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(23, 64, 45, 0.08);
+        }
+
+        .search-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #35474f;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-row .form-control {
+            flex: 1;
+            height: 44px;
+            font-size: 0.9rem;
+            border: 1px solid #dbe4df;
+            border-radius: 9px;
+            text-transform: uppercase;
+        }
+
+        .search-row .form-control:focus {
+            border-color: var(--brand-green);
+            box-shadow: 0 0 0 3px rgba(26, 122, 68, 0.13);
+        }
+
+        .search-btn {
+            height: 44px;
+            padding: 0 22px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #fff;
+            background: var(--brand-green);
+            border: 0;
+            border-radius: 9px;
+            box-shadow: 0 4px 12px rgba(26, 122, 68, 0.22);
+            cursor: pointer;
+        }
+
+        .search-btn:hover {
+            background: var(--brand-green-dark);
+        }
+
+        .search-hint {
+            margin: 10px 0 0;
+            font-size: 0.72rem;
+            line-height: 1.6;
+            color: #8b9a93;
+        }
+
+        /* ---------- ผลการค้นหา ---------- */
+
+        .result-card {
+            margin-top: 18px;
+            overflow: hidden;
+            background: #fff;
+            border: 1px solid #e4ece8;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(23, 64, 45, 0.08);
+        }
+
+        .result-head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eef3f0;
+        }
+
+        .result-head h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #245740;
+        }
+
+        .result-head .status {
+            margin-left: auto;
+        }
+
+        .result-body {
+            padding: 18px 20px 20px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px 20px;
+            margin: 0 0 20px;
+        }
+
+        .info-item dt {
+            margin-bottom: 2px;
+            font-size: 0.7rem;
+            color: #8b9a93;
+        }
+
+        .info-item dd {
+            margin: 0;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #2f3b45;
+            word-break: break-word;
+        }
+
+        .sub-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 0 14px;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #245740;
+        }
+
+        .sub-title::before {
+            content: '';
+            width: 4px;
+            height: 14px;
+            background: var(--brand-green);
+            border-radius: 2px;
+        }
+
+        .timeline {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .tl-item {
+            position: relative;
+            padding: 0 0 18px 26px;
+        }
+
+        .tl-item:last-child {
+            padding-bottom: 0;
+        }
+
+        .tl-item::before {
+            content: '';
+            position: absolute;
+            top: 5px;
+            bottom: -3px;
+            left: 5px;
+            width: 2px;
+            background: #e4ece8;
+        }
+
+        .tl-item:last-child::before {
+            display: none;
+        }
+
+        .tl-dot {
+            position: absolute;
+            top: 3px;
+            left: 0;
+            width: 12px;
+            height: 12px;
+            background: #dbe4df;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px #e4ece8;
+        }
+
+        .tl-item.done .tl-dot {
+            background: var(--brand-green);
+            box-shadow: 0 0 0 2px rgba(26, 122, 68, 0.25);
+        }
+
+        .tl-item.current .tl-dot {
+            background: #f0ad4e;
+            box-shadow: 0 0 0 3px rgba(240, 173, 78, 0.28);
+        }
+
+        .tl-title {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #35474f;
+        }
+
+        .tl-time {
+            display: block;
+            margin-top: 2px;
+            font-size: 0.7rem;
+            color: #8b9a93;
+        }
+
+        /* ---------- ไม่พบข้อมูล ---------- */
+
+        .notice {
+            margin-top: 18px;
+            padding: 16px 18px;
+            font-size: 0.8125rem;
+            line-height: 1.8;
+            color: #8a3b3b;
+            background: #fff;
+            border: 1px solid #f2dede;
+            border-left: 4px solid #d64545;
+            border-radius: 10px;
+        }
+
+        .notice strong {
+            font-weight: 500;
+        }
+
+        .notice a {
+            color: var(--brand-green);
+        }
+
+        .track-footer {
+            margin: 18px 0 0;
+            font-size: 0.72rem;
+            color: #8b9a93;
+            text-align: center;
+        }
+
+        .photo-links {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .photo-links a img {
+            width: 88px;
+            height: 88px;
+            object-fit: cover;
+            border: 1px solid #dbe4df;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 560px) {
+            .search-row {
+                flex-direction: column;
+            }
+
+            .search-btn {
+                width: 100%;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero .brand-logo {
+                width: 130px;
+            }
+        }
+    </style>
+</head>
+
+<body class="page-app track-page">
+
+    <?!= include('PubHead') ?>
+
+    <main class="form-wrap">
+        <section class="hero">
+            <?!= include('Brand') ?>
+            <h1>ติดตามสถานะการแจ้งปัญหา</h1>
+            <p>ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก<br>
+                กรอกเลขที่ใบแจ้งปัญหาเพื่อดูสถานะและความคืบหน้า</p>
+        </section>
+
+        <form class="search-card" id="trackForm" novalidate>
+            <label class="search-label" for="ticketNo">เลขที่ใบแจ้งปัญหา</label>
+            <div class="search-row">
+                <input type="text" id="ticketNo" class="form-control" placeholder="เช่น RQ2611-0001"
+                    autocomplete="off" spellcheck="false">
+            </div>
+            <label class="search-label" for="ticketContact">เบอร์โทรหรือไอดีไลน์ที่ใช้แจ้ง</label>
+            <div class="search-row">
+                <input type="text" id="ticketContact" class="form-control"
+                    placeholder="เช่น 081-234-5678 หรือ lineid" autocomplete="off" spellcheck="false">
+                <button type="submit" class="search-btn">ตรวจสอบสถานะ</button>
+            </div>
+            <p class="search-hint">ต้องกรอกข้อมูลติดต่อให้ตรงกับตอนแจ้งปัญหา
+                (ป้องกันการดูใบแจ้งของคนอื่น)</p>
+        </form>
+
+        <div id="notice" class="notice" role="status" hidden></div>
+
+        <section class="result-card" id="resultCard" hidden>
+            <div class="result-head">
+                <h2>ใบแจ้งปัญหาเลขที่ <span id="resultNo">—</span></h2>
+                <span class="status status--pending" id="resultStatus">—</span>
+            </div>
+
+            <div class="result-body">
+                <dl class="info-grid">
+                    <div class="info-item">
+                        <dt>วันที่แจ้ง</dt>
+                        <dd id="infoReported">—</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>ผู้แจ้ง</dt>
+                        <dd id="infoReporter">—</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>ครุภัณฑ์/พัสดุ</dt>
+                        <dd id="infoEquipment">—</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>เลขครุภัณฑ์</dt>
+                        <dd id="infoCode">—</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>สถานที่</dt>
+                        <dd id="infoLocation">—</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>ผู้รับผิดชอบ</dt>
+                        <dd id="infoOwner">—</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>หมวดหมู่</dt>
+                        <dd id="infoCategory">—</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>ความเร่งด่วน</dt>
+                        <dd id="infoUrgency">—</dd>
+                    </div>
+                    <div class="info-item" style="grid-column:1/-1;">
+                        <dt>รายละเอียดปัญหา</dt>
+                        <dd id="infoDetail">—</dd>
+                    </div>
+                    <div class="info-item" id="photosItem" style="grid-column:1/-1;" hidden>
+                        <dt>รูปแนบ</dt>
+                        <dd id="infoPhotos"></dd>
+                    </div>
+                </dl>
+
+                <h3 class="sub-title">ความคืบหน้า</h3>
+                <ul class="timeline" id="timeline"></ul>
+            </div>
+        </section>
+
+        <p class="track-footer">© 2569 ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก</p>
+    </main>
+
+    <script>
+        (function () {
+            'use strict';
+
+            var THAI_MONTHS = [
+                'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+            ];
+
+            var STATUS_CLASS = {
+                'เสร็จสิ้น': 'done',
+                'กำลังดำเนินการ': 'progress',
+                'รอดำเนินการ': 'pending',
+                'ยกเลิก': 'cancel'
+            };
+
+            /* ---------- ข้อมูลสำรองสำหรับโหมดตัวอย่าง (ไม่มี Apps Script) ---------- */
+            var DEMO_TICKETS = {
+                'RQ2611-0001': {
+                    no: 'RQ2611-0001',
+                    reportedAt: '2026-11-10T08:57:03',
+                    reporter: 'นภาพร วงศ์ทอง',
+                    phone: '081-234-5678',
+                    category: 'ครุภัณฑ์สำนักงาน',
+                    urgency: 'เร่งด่วน',
+                    department: 'ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก',
+                    equipment: 'เครื่องปรับอากาศ',
+                    equipCode: '7440-004-0021',
+                    location: 'อาคาร 1 ชั้น 2 ห้องประชุม',
+                    owner: 'ช่างประจำอาคาร',
+                    detail: 'แอร์ไม่เย็น มีน้ำหยดจากตัวเครื่อง',
+                    status: 'กำลังดำเนินการ',
+                    steps: [
+                        { label: 'รับแจ้งปัญหา', at: '2026-11-10T08:57:03' },
+                        { label: 'มอบหมายผู้รับผิดชอบ: ช่างประจำอาคาร', at: '2026-11-10T11:20:00' },
+                        { label: 'อยู่ระหว่างดำเนินการซ่อม', at: '', current: true }
+                    ]
+                },
+                'J110969C04S20N2766': {
+                    no: 'J110969C04S20N2766',
+                    reportedAt: '2026-09-11T08:38:16',                    reporter: 'พีรวิชญ์ นวลทอง', department: 'ศพท.เขตสุขภาพที่ 1 จ.ลำปาง',
+                    phone: '082-111-2233',
+                    category: 'ระบบเครือข่าย/อินเทอร์เน็ต',
+                    urgency: 'ปกติ',
+                    equipment: 'ระบบโทรศัพท์/สายสัญญาณ', equipCode: 'ไม่มีเลขครุภัณฑ์',
+                    location: 'อาคารศูนย์ฯ ชั้น 1 ห้อง IT',
+                    owner: 'ตระกูลศักดิ์ หุนประเสริฐ',
+                    detail: 'สายสัญญาณโทรศัพท์ขาด ทำให้โทรออกไม่ได้',
+                    status: 'เสร็จสิ้น',
+                    steps: [
+                        { label: 'รับแจ้งปัญหา', at: '2026-09-11T08:38:16' },
+                        { label: 'มอบหมายผู้รับผิดชอบ: ตระกูลศักดิ์ หุนประเสริฐ', at: '2026-09-12T09:00:00' },
+                        { label: 'ดำเนินการซ่อม', at: '2026-09-15T10:30:00' },
+                        { label: 'ปิดงาน', at: '2026-09-17T09:16:43' }
+                    ]
+                },
+                'J110969C04S20N2784': {
+                    no: 'J110969C04S20N2784',
+                    reportedAt: '2026-10-21T13:45:30',                    reporter: 'ปวีณา สุขศรี', department: 'ศพท.เขตสุขภาพที่ 5 จ.นครปฐม',
+                    phone: '083-777-8899',
+                    category: 'เครื่องพิมพ์/สแกนเนอร์',
+                    urgency: 'เร่งด่วน',
+                    equipment: 'เครื่องพิมพ์เลเซอร์',
+                    equipCode: '7440-002-0015',
+                    location: 'อาคาร 2 ชั้น 1 ห้องการเงิน',
+                    owner: 'สมพงษ์ ช่างซ่อม',
+                    detail: 'เครื่องพิมพ์ติดกระดาษและมีเสียงดังผิดปกติ',
+                    status: 'กำลังดำเนินการ',
+                    steps: [
+                        { label: 'รับแจ้งปัญหา', at: '2026-10-21T13:45:30' },
+                        { label: 'มอบหมายผู้รับผิดชอบ: สมพงษ์ ช่างซ่อม', at: '2026-10-22T09:10:00' },
+                        { label: 'รออะไหล่จากผู้ขาย', at: '', current: true }
+                    ]
+                },
+                'J110969C04S20N2803': {
+                    no: 'J110969C04S20N2803',
+                    reportedAt: '2026-11-05T15:22:41',                    reporter: 'พีรวิชญ์ นวลทอง', department: 'ศพท.เขตสุขภาพที่ 7 จ.ขอนแก่น',
+                    lineId: 'it-support',
+                    category: 'ระบบเครือข่าย/อินเทอร์เน็ต',
+                    urgency: 'ปกติ',
+                    equipment: 'ระบบเครือข่าย/อินเทอร์เน็ต', equipCode: 'ไม่มีเลขครุภัณฑ์',
+                    location: 'อาคารศูนย์ฯ ชั้น 1 ห้อง IT',
+                    owner: '',
+                    detail: 'อินเทอร์เน็ตห้อง IT หลุดบ่อย',
+                    status: 'รอดำเนินการ',
+                    steps: [
+                        { label: 'รับแจ้งปัญหา', at: '2026-11-05T15:22:41' },
+                        { label: 'รอเจ้าหน้าที่รับเรื่อง', at: '', current: true }
+                    ]
+                }
+            };
+
+            var form = document.getElementById('trackForm');
+            var input = document.getElementById('ticketNo');
+            var contactInput = document.getElementById('ticketContact');
+            var notice = document.getElementById('notice');
+            var card = document.getElementById('resultCard');
+            var timeline = document.getElementById('timeline');
+
+            /* ---------- แสดง/ซ่อนแบบนุ่มนวล (วัดความสูงจริงก่อน animate) ---------- */
+
+            function reveal(el) {
+                if (!el || el.dataset.soft === 'open') {
+                    return;
+                }
+                el.dataset.soft = 'open';
+
+                if (el._softAnim) {
+                    el._softAnim.cancel();
+                }
+                el.style.height = '';
+                el.style.marginTop = '';
+                el.style.overflow = '';
+                el.style.opacity = '';
+
+                el.hidden = false;
+                el.inert = false;
+                el.removeAttribute('aria-hidden');
+
+                if (!el.animate) {
+                    return;
+                }
+
+                var margin = window.getComputedStyle(el).marginTop;
+                var target = el.offsetHeight;
+
+                el.style.overflow = 'hidden';
+                el.style.height = '0px';
+                el.style.marginTop = '0px';
+                el.style.opacity = '0';
+
+                var openAnim = el.animate(
+                    [
+                        { height: '0px', opacity: 0, marginTop: '0px' },
+                        { height: target + 'px', opacity: 1, marginTop: margin },
+                    ],
+                    { duration: 280, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' }
+                );
+                el._softAnim = openAnim;
+
+                var finishOpen = function () {
+                    if (el._softAnim !== openAnim) {
+                        return;
+                    }
+                    el.style.height = '';
+                    el.style.marginTop = '';
+                    el.style.overflow = '';
+                    el.style.opacity = '';
+                    el._softAnim = null;
+                };
+                openAnim.onfinish = finishOpen;
+                openAnim.oncancel = finishOpen;
+                setTimeout(finishOpen, 420);
+            }
+
+            function conceal(el) {
+                if (!el || el.dataset.soft === 'closed' || el.hidden) {
+                    return;
+                }
+                el.dataset.soft = 'closed';
+
+                if (el._softAnim) {
+                    el._softAnim.cancel();
+                }
+                el.style.height = '';
+                el.style.marginTop = '';
+                el.style.overflow = '';
+                el.style.opacity = '';
+
+                el.inert = true;
+                el.setAttribute('aria-hidden', 'true');
+
+                if (!el.animate) {
+                    el.hidden = true;
+                    return;
+                }
+
+                var margin = window.getComputedStyle(el).marginTop;
+                var from = el.offsetHeight;
+
+                el.style.overflow = 'hidden';
+
+                var closeAnim = el.animate(
+                    [
+                        { height: from + 'px', opacity: 1, marginTop: margin },
+                        { height: '0px', opacity: 0, marginTop: '0px' },
+                    ],
+                    { duration: 240, easing: 'cubic-bezier(0.4, 0, 0.6, 1)' }
+                );
+                el._softAnim = closeAnim;
+
+                var finishClose = function () {
+                    if (el._softAnim !== closeAnim) {
+                        return;
+                    }
+                    el.hidden = true;
+                    el.style.height = '';
+                    el.style.marginTop = '';
+                    el.style.overflow = '';
+                    el.style.opacity = '';
+                    el._softAnim = null;
+                };
+                closeAnim.onfinish = finishClose;
+                closeAnim.oncancel = finishClose;
+                setTimeout(finishClose, 380);
+            }
+
+            function pad(n) {
+                return n < 10 ? '0' + n : String(n);
+            }
+
+            function toDate(value) {
+                return value ? new Date(value) : null;
+            }
+
+            function thaiDate(value) {
+                var d = toDate(value);
+                if (!d || isNaN(d.getTime())) {
+                    return '—';
+                }
+                return d.getDate() + ' ' + THAI_MONTHS[d.getMonth()] + ' ' + (d.getFullYear() + 543);
+            }
+
+            function thaiTime(value) {
+                var d = toDate(value);
+                return d && !isNaN(d.getTime())
+                    ? pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds())
+                    : '';
+            }
+
+            function stamp(value) {
+                var time = thaiTime(value);
+                return time ? thaiDate(value) + ' ' + time : 'ยังไม่ถึงขั้นนี้';
+            }
+
+            function normalize(raw) {
+                return String(raw || '').trim().toUpperCase().replace(/\s+/g, '');
+            }
+
+            function esc(text) {
+                return String(text === null || text === undefined ? '' : text)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            /* ตรวจข้อมูลติดต่อแบบเดียวกับเซิร์ฟเวอร์ (โหมดตัวอย่าง) */
+            function contactOk(ticket, contactRaw) {
+                var digits = String(contactRaw || '').replace(/\D/g, '');
+                if (digits && String(ticket.phone || '').replace(/\D/g, '') === digits) {
+                    return true;
+                }
+                return !!contactRaw &&
+                    String(ticket.lineId || '').trim().toLowerCase() ===
+                    String(contactRaw).trim().toLowerCase();
+            }
+
+            function renderTicket(ticket) {
+                document.getElementById('resultNo').textContent = ticket.no;
+                document.getElementById('infoReported').textContent = stamp(ticket.reportedAt);
+                document.getElementById('infoReporter').textContent =
+                    ticket.reporter + (ticket.department ? ' (' + ticket.department + ')' : '');
+                document.getElementById('infoEquipment').textContent =
+                    ticket.equipment || ticket.category || '—';
+                document.getElementById('infoCode').textContent = ticket.equipCode || '—';
+                document.getElementById('infoLocation').textContent = ticket.location || '—';
+                document.getElementById('infoOwner').textContent = ticket.owner || 'ยังไม่มอบหมาย';
+                document.getElementById('infoCategory').textContent = ticket.category || '—';
+                document.getElementById('infoUrgency').textContent = ticket.urgency || '—';
+                document.getElementById('infoDetail').textContent = ticket.detail || '—';
+
+                /* รูปแนบ (ลิงก์ Drive) — มีค่อยโชว์ */
+                var photos = ticket.photos || [];
+                var photosItem = document.getElementById('photosItem');
+                var photosBox = document.getElementById('infoPhotos');
+                if (photosItem && photosBox) {
+                    if (photos.length) {
+                        photosBox.innerHTML = '<div class="photo-links">' + photos.map(function (url, i) {
+                            var safe = esc(url);
+                            return '<a href="' + safe + '" target="_blank" rel="noopener">' +
+                                '<img src="' + safe + '" alt="รูปแนบ ' + (i + 1) + '" loading="lazy"></a>';
+                        }).join('') + '</div>';
+                        photosItem.hidden = false;
+                    } else {
+                        photosBox.innerHTML = '';
+                        photosItem.hidden = true;
+                    }
+                }
+
+                var badge = document.getElementById('resultStatus');
+                badge.textContent = ticket.status;
+                badge.className = 'status status--' + (STATUS_CLASS[ticket.status] || 'cancel');
+
+                timeline.innerHTML = (ticket.steps || []).map(function (step) {
+                    var cls = step.current ? 'tl-item current' : (step.at ? 'tl-item done' : 'tl-item');
+                    return '<li class="' + cls + '">' +
+                        '<span class="tl-dot" aria-hidden="true"></span>' +
+                        '<span class="tl-title">' + esc(step.label) + '</span>' +
+                        '<span class="tl-time">' + stamp(step.at) + '</span>' +
+                        '</li>';
+                }).join('');
+
+                reveal(card);
+                conceal(notice);
+            }
+
+            function renderNotFound(raw) {
+                conceal(card);
+                notice.innerHTML = '<strong>ไม่พบข้อมูลที่ค้นหา' +
+                    (raw ? ' (เลขที่ ' + esc(raw) + ')' : '') + '</strong><br>' +
+                    'กรุณาตรวจสอบเลขที่และเบอร์โทร/ไลน์ให้ถูกต้อง (ตัวพิมพ์เล็ก/ใหญ่ไม่มีผล) ' +
+                    'หรือ<a href="?page=form">แจ้งปัญหาใหม่</a>';
+                reveal(notice);
+            }
+
+            function search() {
+                var raw = input.value.trim();
+                var contactRaw = contactInput.value.trim();
+                if (!raw || !contactRaw) {
+                    conceal(card);
+                    notice.textContent = 'กรุณากรอกเลขที่ใบแจ้งปัญหาและเบอร์โทร/ไลน์ที่ใช้แจ้ง';
+                    reveal(notice);
+                    (raw ? contactInput : input).focus();
+                    return;
+                }
+
+                lookup(normalize(raw), contactRaw);
+            }
+
+            /* ค้นในชีตผ่านเซิร์ฟเวอร์ (getTicket) ; โหมดตัวอย่างใช้ข้อมูลสำรองในหน้านี้ */
+            function lookup(no, contactRaw) {
+                var run = (window.google && window.google.script && window.google.script.run) || null;
+
+                if (!run) {
+                    var demo = DEMO_TICKETS[no];
+                    if (demo && contactOk(demo, contactRaw)) {
+                        renderTicket(demo);
+                    } else {
+                        renderNotFound(no);
+                    }
+                    return;
+                }
+
+                run.withSuccessHandler(function (res) {
+                    if (res && res.ok && res.ticket) {
+                        renderTicket(res.ticket);
+                    } else {
+                        renderNotFound(no);
+                    }
+                }).withFailureHandler(function () {
+                    renderNotFound(no);
+                }).getTicket(no, contactRaw);
+            }
+
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                search();
+            });
+
+            /* รองรับลิงก์ตรง เช่น ?page=track&no=RQ2611-0001 (กรอกข้อมูลติดต่อเพิ่มเอง) */
+            var preset = new URLSearchParams(window.location.search).get('no');
+            if (preset) {
+                input.value = preset;
+                contactInput.focus();
+            }
+        })();
+    </script>
+
+<?!= include('NavJS') ?>
+</body>
+
+</html>

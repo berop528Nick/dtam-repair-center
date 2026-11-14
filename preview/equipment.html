@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>รายละเอียดครุภัณฑ์ · ระบบแจ้งปัญหาคอมพิวเตอร์และอุปกรณ์</title>
+    <meta name="theme-color" content="#1a7a44">
+    <!-- สีพื้นตั้งต้น: ให้หน้าใหม่มีพื้นสีแอปตั้งแต่เพนต์แรก กันจอขาวแวบตอนเปลี่ยนหน้า
+         (ค่าตรงกับ --body-bg ใน Styles.html) -->
+    <style>html{background-color:#f4f7f9}</style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- ฟอนต์: preload เฉพาะไฟล์ Kanit ที่ใช้จริง (ชุดไทย/ละติน 2 น้ำหนัก) + display=optional
+         ถ้าฟอนต์ยังไม่พร้อมภายใน ~100ms หน้าจะใช้ฟอนต์สำรองทั้งหน้า และ "ไม่สลับกลางหน้า"
+         จึงไม่มีอาการฟ้อนเพี้ยนระหว่างโหลด (เดิมใช้ swap = เห็นฟอนต์เปลี่ยนกลางหน้า) -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKZ-Go6G5tXcraBGwCYdA.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKZ-Go6G5tXcraVGwA.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWzVaF5NQ.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
+        rel="stylesheet">
+    <link rel="stylesheet" href="assets/styles.css?v=mwge6huy">
+</head>
+
+<body class="page-app">
+
+    <!-- ============================================================
+     Shell.html — แถบหัว + เมนูข้าง ใช้ร่วมทุกหน้า (Dashboard / Equipment)
+     ลิงก์ภายในใช้ ?page=... ซึ่งชี้กลับ Web app URL เดียวกัน
+     ============================================================ -->
+<header class="app-header">
+    <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="เปิด/ปิดเมนู" aria-expanded="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 6h18M3 12h18M3 18h18" />
+        </svg>
+    </button>
+    <span class="app-title">ระบบแจ้งปัญหาคอมพิวเตอร์และอุปกรณ์
+        <span class="app-title-sub">IT Service Desk</span></span>
+    <div class="app-user">
+        <!-- เวลาที่เหลือก่อนต้องเข้าสู่ระบบใหม่ (AppJS อัปเดตทุก 30 วินาที) -->
+        <span class="session-left" data-session-left hidden></span>
+        <span data-user-name>ผู้ใช้งาน</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21a8 8 0 0 1 16 0" />
+        </svg>
+    </div>
+</header>
+
+<!-- สถานะกำลังโหลดหน้า: แถบวิ่งบนจอ + ตัวหมุนกลางจอ -->
+<div class="page-load-bar" aria-hidden="true"></div>
+<div class="page-loader" role="status">
+    <span class="page-loader-ring" aria-hidden="true"></span>
+    <span>กำลังโหลด…</span>
+</div>
+<script>
+    /* เติมคลาสที่ <html> ตั้งแต่เริ่ม parse เพื่อให้เห็นสถานะโหลดทันที
+       (ไม่ต้องรอ AppJS ที่อยู่ท้ายหน้า)
+       ระหว่าง is-loading เนื้อหาจะถูกซ่อนไว้ แล้วค่อย ๆ ขึ้นพร้อมกันตอนโหลดเสร็จ
+
+       ยกเว้น "กดเมนูในแอป" : ลิงก์ ?page=... คือการโหลดหน้าใหม่ทั้งหน้า
+       ถ้าโชว์สถานะโหลดซ้ำทุกครั้ง จอจะว่างแล้วค่อย ๆ ขึ้น = กระพริบทุกคลิก
+       ตัวจำว่ามาจากเมนูใช้ query param (nav=1) ไม่ใช้ sessionStorage
+       เพราะใน iframe ของ Apps Script บางเครื่อง sessionStorage ถูกบล็อก */
+    (function () {
+        var NAV_PARAM = 'nav';
+        var MIN_MS = 430;
+        var FADE_MS = 320;
+        var root = document.documentElement;
+        var fromNav = false;
+
+        /* บอก CSS ว่าแถบหัวสูงเท่าไร : ฝ้าเบลอ/ตัวหมุนตอนโหลด
+           จะได้เริ่มใต้แถบหัว ไม่ทับเมนูด้านบน (ดู --load-top ใน Styles) */
+        function markHeaderHeight() {
+            var header = document.querySelector('.app-header');
+
+            if (header) {
+                root.style.setProperty('--load-top', header.offsetHeight + 'px');
+            }
+        }
+
+        markHeaderHeight();
+        window.addEventListener('resize', markHeaderHeight);
+
+        /* จอเล็ก : ซ่อนเมนูข้างตั้งแต่ก่อนเบราว์เซอร์วาดเฟรมแรก
+           ถ้ารอให้สคริปต์ท้ายหน้าเป็นคนใส่คลาส จะเห็นเมนูโผล่แวบหนึ่งแล้วค่อยเลื่อนออก (กระพริบ) */
+        try {
+            if (window.matchMedia('(max-width: 900px)').matches) {
+                document.body.classList.add('sidebar-collapsed');
+            }
+        } catch (e) { }
+
+        try {
+            var here = new URL(window.location.href);
+            fromNav = here.searchParams.get(NAV_PARAM) === '1';
+
+            if (fromNav) {
+                /* เก็บ nav=1 ออกจาก URL ให้เรียบร้อยก่อนใช้งานต่อ */
+                here.searchParams.delete(NAV_PARAM);
+                window.history.replaceState(null, '', here.pathname + here.search + here.hash);
+            }
+        } catch (e) {
+            fromNav = /[?&]nav=1(&|$)/.test(window.location.search);
+        }
+
+        /* กดลิงก์ในแอป = กำลังจะเปลี่ยนหน้า : เติม nav=1 ให้หน้าถัดไปรู้
+           ต้องลงทะเบียนทุกครั้ง แม้หน้านี้จะมาจากเมนูแล้ว ไม่งั้นคลิกถัดไปจะไม่ถูกจำ */
+        document.addEventListener('click', function (event) {
+            if (event.button !== 0 || event.metaKey || event.ctrlKey ||
+                event.shiftKey || event.altKey) {
+                return;
+            }
+
+            var link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+            if (!link || link.target === '_blank' || link.hasAttribute('download')) {
+                return;
+            }
+
+            try {
+                var next = new URL(link.href, window.location.href);
+
+                /* ลิงก์นอกเว็บ (เช่น เมนูของ Google) ไม่ต้องเติม */
+                if (next.origin !== window.location.origin) {
+                    return;
+                }
+
+                next.searchParams.set(NAV_PARAM, '1');
+                link.href = next.href;
+            } catch (e) { }
+        }, true);
+
+        /* เฟดออกก่อนเปลี่ยนหน้าแบบโหลดใหม่ทั้งหน้า
+           - ถ้าตัวอื่นจัดการคลิกไปแล้ว (NavJS / ปุ่มเจ้าหน้าที่เข้าระบบ) จะมี defaultPrevented
+             = ข้ามไป เพราะตัวนั้นมีอนิเมชันปิดของตัวเอง
+           - ลิงก์นอกเว็บ / แท็บใหม่ / ดาวน์โหลด ไม่ต้องเฟด (จะกลายเป็นค้างจาง) */
+        var LEAVING_MS = 200;
+
+        document.addEventListener('click', function (event) {
+            if (event.defaultPrevented || event.button !== 0 || event.metaKey ||
+                event.ctrlKey || event.shiftKey || event.altKey) {
+                return;
+            }
+
+            var link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+
+            if (!link || link.target === '_blank' || link.hasAttribute('download')) {
+                return;
+            }
+
+            var href = link.getAttribute('href') || '';
+
+            if (href.charAt(0) === '#' || /^(mailto|tel|javascript):/i.test(href)) {
+                return;
+            }
+
+            var next;
+
+            try {
+                next = new URL(link.href, window.location.href);
+            } catch (e) {
+                return;
+            }
+
+            if (next.origin !== window.location.origin) {
+                return;
+            }
+
+            /* target=_top ใน iframe ของ Apps Script : ให้เบราว์เซอร์พาออกไปเอง */
+            var inIframe = false;
+
+            try {
+                inIframe = window.top !== window.self;
+            } catch (e) {
+                inIframe = true;
+            }
+
+            if ((link.getAttribute('target') || '').toLowerCase() === '_top' && inIframe) {
+                return;
+            }
+
+            event.preventDefault();
+
+            /* ไม่เฟดจางทั้งหน้าก่อนโหลดหน้าใหม่ : การจางทำให้เนื้อหาว่างเปล่า ~200ms
+               แล้วค่อยเจอหน้าจอโหลดใหม่ = เห็นเป็นกระพริบสองจังหวะติดกัน
+               ปล่อยให้เบราว์เซอร์ค้างหน้าเดิมไว้จนหน้าใหม่พร้อมสลับเอง */
+            window.location.href = link.href;
+        });
+
+        if (fromNav) {
+            /* มาจากเมนู : เนื้อหาขึ้นทันที ไม่มีตัวหมุน แต่ยังเฟดเข้าอ่อน ๆ
+               ให้ต่อเนื่องจากการเฟดออกของหน้าเดิม */
+            root.classList.add('is-nav');
+            root.classList.add('is-nav-in');
+
+            window.setTimeout(function () {
+                root.classList.remove('is-nav-in');
+            }, 280);
+            return;
+        }
+
+        root.classList.add('is-loading');
+
+        function finish() {
+            window.setTimeout(function () {
+                root.classList.remove('is-loading');
+                root.classList.add('is-loaded');
+                window.setTimeout(function () {
+                    root.classList.remove('is-loaded');
+                }, FADE_MS);
+            }, Math.max(0, MIN_MS - performance.now()));
+        }
+
+        if (document.readyState === 'complete') {
+            finish();
+        } else {
+            window.addEventListener('load', finish);
+        }
+
+        /* กันเหนียว : ถ้าการโหลดค้างผิดปกติ ก็ยังโชว์เนื้อหาภายใน 4 วินาที */
+        window.setTimeout(function () {
+            root.classList.remove('is-loading');
+            root.classList.remove('is-loaded');
+        }, 4000);
+    })();
+</script>
+
+<div class="shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-profile">
+            <img class="profile-avatar" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAADAFBMVEX///////7+///+//7//v///v7+/v79/v79/v3//f///P///P7+/f79/f39/Pz/+/7/+/3++/38/f38/fz7/fz8/Pz7/Pz7/Pv8+/v6/Pv6/Pr6+/r5+/n++v39+fv8+fv8+Pr7+fr7+Pn4+vn3+vj4+Pj2+ff0+Pb59/j49/f09/Xz9/X29fT19fT09PTz8/Ly9/Tx9vTw9fLu9PHw8/Dt8/Ds8+/x8vHu8vDr8u/t8O3q8Ozp8Ovm7+rm7url7unp7ero7erm6+bk7ejl6+jl6ubj7Ofh6+Xi6uXf6uTi6OTe6OLd6OLa5+Dc5eDZ5d7Y5d7Y49zX5d7W5N3W49vU49vS4trU4NjR4djP4NfN39XQ3NPO3dTP29HL3dTM2tDK3dPH29HH2s/K2c3G2M7F2M7E2M3B2My/1sq+1cm+1Mm60sa80MO40cS30MO10MK5zsG1zcC0zsCzzsCyzr+wzL2vy7ytyryvybqsybmryLmpyLinyLirx7ipx7apxraoxralxrWlxbSkxLOkw7KjwrGiwrGhw7GgwbCewa+cv62dvqybvqyZvquWvaiYvKmXvKiXu6iVuqeVuaaUuqaSuaWRuKSRtqGOtqGMtqGNtaCJtJ6FspuEsJmCr5iArZZ/rpZ/rJR9q5N6rJN5qZF2qpB4qI92po5xpYpvo4lvoYZroYZnnoJnnH9hm35bmntdmHpal3lXl3lalHZSk3NQkHBKjWxFi2hBh2Q3g144f1owf1kuelQoeFEidU0bckkWcUYTbUISaz8MakAKaj8Jaj4OaT4NZzsKaT4JaT4JaT0JaD0IaT4IaD4IaD0IaDwIZz0HaTwHaD0HaDwHZzwGaToGaDwGZz0GZzwGZzsGZjwGZjsFaTsFaDsFaDoFZzwFZzsFZzkEZzoFZjwFZjsFZjoEZjoCZjgKYzUFZTgEZDgDYzYCZTgCYzYCYTMAYzYAYjUAYTQAYTIAYDIAXzIAXzEAXjAAXi8AXS4AXC4AXCwAWy0AWywAWysAWioAVSLQylNeAAAHC0lEQVR42u1WeziV2Rp/R3xIKHti9kEOJkkoJJfIHruMS0KSS+VS7opxD5kkItqRk0tuRXJL2m65tV2KHSkzqZxvb0ftaT6q4x65TGY733iec2qe8zHm/HX+6P1rrfWs9Vvv7/e+610vwGf7bP/vhpDWLxpp1f9ymiS7bu0GRVVtLRU5aWkRSbElNxKjS8pIa9l+dzo2JvJs7LnI4we2SstK/onbv5JTtIq6FHpAXR70cLBd1iFJYWZ/VZRY4XGejRssaOdNAMw9qIXVjgVxm1y3gXlivMmGzUTbv/gv8ooqYQk64HXJp6bSp+5unF3h5YZcN2/4Ntlv42YBgvt+N+MFCTlqqid4eacUXUimh5fQzSQyc/KueJe7WUNgsrai+B95QJaxTDeA6KZipJC2y31xSdg6/aDCdRojE4wyqAQIv/dfxjqdrFkTcqvBQB6fKpkctDH6bWBkf7PhRJ7LzkyqosCyqSNnnIl41tcUutoDWGTVNncN/5PZVHOZCuByKqMgX08jU3szznNJCvKqGTupR5Ma7MhgTe+anx4bxG18Zr61WB8gnp6TZqmTKrtxaQ0kRGP2Q5WlvBECVx7MYZ3dzwY7urBn3Q+H55sjAMIaijQ1HINFl5SBZ519OJJhXhoMpHLuYCfKwX4eYtRO/TCAoZ0js9kAvvllZSbxZrJLAaxXTJG8yKhxFxOu5HawBzgc9khLYtGDvj4OC3eDmwsQ13g3SilBWoKQAi8IOQeQQq9W6cAN7n1sYIDNfjxL37OvcrKXzUL7nnXMnYGYqrOOOmEWIp/q+FEDMZl49ai8TE3wvDfx+smj7s62t80225V0a0fvtz/q6nk1y/As2HKqLkEzWlSMUMQ1plFSFX6eCqSm27lDk7Pv5yYXboO6HmQvTMxNz74fvV5ZAzvK6GVScboihBLweruDe549BHKbvzUMTkhKS6ptdTKzNaxvuHwljRZmqtc8sh+8v98CvocFP+HwHw/4153ehQAIQPX74RaaltY3FNU9Lb6GxhaNVsoUitbWs81Dc9cWs21/oCA/AQV+lXMSQCKDRsvr9rHZ4I27Xbfnvqs1pJQP5Wq5Gm8+8X68Y6oeIX0JoBEjI0zEgBID1HAAj3dPWJ0DrdXRZntK3tQZUmrflJkeOl3R8lMnOnwfT0hnNYFYVUIAs3BILBWA8x/aWey/D3OTtyrruttq6x45vlNOOX/h9VMW2jPhAjyF0RCjy0cUBasQSKRLQdaH9n5293QlX32F+7EjwmQnp0M3Kr66M9WNoY+n/UD4Vhqc2U2YB1bBcPiWAGTPt3PYPRN1yrULD+81isk3tjIXGIp1Ez0Y9ng6EKD0KHz/KcDHirQPfwPxCpA634Gi6MuJdDn3jLI7xyxuluTEKJ8c+gfKRh9NeoFkJBmiKbxEebA7CviFEQiZ68IBng2+rQ4+bKhi5UQ54GSZxxzsZbFR7O3+xZw/q4UQUODTisWjS922t+8Vhi368Ctz3zFb/+8OP5iZedX7goOhY00KX+8A2BSryE9UjWRit+jlV1OhcaIb7cW3t400QvoWryxoft3+/EX/S6xrphJ0CnP0DCKFiABW8frbyNOroiF3vg0//psXQ+dM1bW3X3335MULFvoz/jhDwLk042s3T16iVAawDYWAvAwlA+ZAL5uNYdiP481HxHX9f8D5ozjgj6MMyV1VR+0g2lgQiFREVC6Q9yYXe8B1bhu+H8N6JmtNjV0PNQ0/7+/HFzp/iUB0XCL2bjovS1yZeXj9XZDIO4lqCnen2jhoH8Z6xTx5xKp4sofTj7Kwtg/VX0CQviP4uvHyEJe0NZRkfoeC3ADEjjnS/hMLQweY52yPF412Y2yM1TbN2AHBEcXx5EuEL2FRRkF/D/CNvuUHXswJnMXTd/UlLrlFDzlsPCQzTWZgdL4uFILcVvMsVVWFVVPV1EovRCeAA2P+ZcfT58NNh7Lf9PZ2dw5y6/ThYPneJHmDJFnS0j+ToBUNDtqnJgWBeknf3Nijp63Hy0bv94/P38smgU7qdboNOW23yDJfm8BqnwhwsMyq8AWwu9k0Nccd+5X7yzjjmhGAQgY9yRHinYX4l/naYP3a8BAwyYyjXdXBU9Yttfh2+Q2aA/76XVLAIE0PzviIkpbtD0BcOuIMaGhe8wDvhC//vaipFlhw1BHPlPgTQhJ/1KGIr/WlbQMqGKTEFBRuOxDvbBNZnOVlnn81FPQvu4muoE8SX22b5obfmpdQchpOVecH5JTnXLvgAHDiotnHf5V3GQQxIa2wFOdVklLWAOFeJmU+fwvUUeNzvxigvE5gJU0WLouIkHFkip85WQykAPQR+ItFUMrJbwTXr7xR5OdbrWQf6aeHwCoEEJOgEGt5wTXIn+p0PwYHIYzWSrwQQwiGn+2zEdq/AL1c7lEm8WXpAAAAAElFTkSuQmCC" alt="">
+            <div class="profile-text">
+                <strong data-user-name>ผู้ใช้งาน</strong>
+                <span class="online"><i class="dot"></i>Online</span>
+            </div>
+        </div>
+
+        <div class="sidebar-clock">
+            <span id="clockDate">—</span> | <span id="clockTime">—</span>
+        </div>
+
+        <p class="nav-title">สำหรับผู้ใช้งาน</p>
+
+        <nav class="nav">
+            <a href="dashboard.html?page=dashboard" class="nav-link" data-page="dashboard">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 10.5 12 3l9 7.5" />
+                    <path d="M5 10v10h14V10" />
+                </svg>
+                <span>หน้าแรก</span>
+            </a>
+
+            <a href="dashboard.html?page=dashboard&scope=mine" class="nav-link" data-page="mywork">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 4h6v3H9z" />
+                    <path d="M9 5H5v16h14V5h-4" />
+                    <path d="m9 13 2 2 4-4" />
+                </svg>
+                <span>งานของฉัน</span>
+            </a>
+
+            <!-- ปุ่มจัดการ : เพิ่มเจ้าหน้าที่ (ฟ้า) / แจ้งปัญหา (เหลือ) / ออกจากระบบ (แดง) -->
+            <button type="button" class="nav-link nav-link--button nav-link--staff" data-soon="เพิ่มเจ้าหน้าที่">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M19 8v6M22 11h-6" />
+                </svg>
+                <span>เพิ่มเจ้าหน้าที่</span>
+            </button>
+
+            <!-- ไม่ใส่ target="_top" : ใน iframe ของ Apps Script ลิงก์แบบ ?page=… จะอ้างอิง
+                 โดเมน sandbox (…googleusercontent.com) แล้วเปิดเป็นหน้าจอขาว
+                 ปล่อยให้ NavJS สลับไปหน้าแจ้งซ่อมในหน้าเดิม (ดู App.goTo) -->
+            <a href="form.html?page=form" class="nav-link nav-link--button nav-link--report" data-page="form">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M22 2 11 13" />
+                    <path d="M22 2 15 22l-4-9-9-4z" />
+                </svg>
+                <span>แจ้งปัญหา</span>
+            </a>
+
+            <a href="login.html?page=login" class="nav-link nav-link--button nav-link--logout" data-page="logout">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <path d="M16 17l5-5-5-5" />
+                    <path d="M21 12H9" />
+                </svg>
+                <span>ออกจากระบบ</span>
+            </a>
+        </nav>
+    </aside>
+
+    <main class="app-main">
+
+
+    <div class="page-heading">
+        <span>รายละเอียดครุภัณฑ์</span>
+    </div>
+
+    <div class="page-body">
+        <section class="table-card">
+            <div class="table-toolbar">
+                <div class="toolbar-left">
+                    <div class="entries">
+                        Show
+                        <select id="pageSize" aria-label="จำนวนแถวต่อหน้า">
+                            <option value="7" selected>7</option>
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                        entries
+                    </div>
+                    <div class="export-btns">
+                        <button type="button" data-export="pdf">PDF</button>
+                        <button type="button" data-export="excel">Excel</button>
+                    </div>
+                </div>
+                <label class="search-box" for="searchInput">
+                    <span>Search:</span>
+                    <input type="search" id="searchInput" autocomplete="off">
+                </label>
+            </div>
+
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead id="tableHead">
+                        <tr>
+                            <th class="col-no">#</th>
+                            <th data-sort="equipCode">เลขครุภัณฑ์</th>
+                            <th data-sort="name">ชื่อครุภัณฑ์</th>
+                            <th data-sort="category">หมวดหมู่</th>
+                            <th data-sort="department">หน่วยงาน</th>
+                            <th data-sort="owner">ผู้ครอบครอง</th>
+                            <th data-sort="acquiredAt">วันที่ขึ้นทะเบียน</th>
+                            <th data-sort="status">สถานะ</th>
+                            <th class="col-action">#</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="table-footer">
+                <span id="tableInfo"></span>
+                <div class="pager" id="pager"></div>
+            </div>
+        </section>
+    </div>
+
+    </main><!-- /.app-main -->
+</div><!-- /.shell -->
+
+<footer class="app-footer">
+    <span>Copyright © 2569 ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก · All rights reserved.</span>
+    <span>Version 1.0.0</span>
+</footer>
+
+<!-- กล่องแจ้งเตือน (ใช้ร่วมทุกหน้า) -->
+<div class="swal-overlay" id="alertBox" hidden>
+    <div class="swal-box" role="dialog" aria-modal="true" aria-labelledby="alertTitle">
+        <div class="swal-icon swal-icon--info" aria-hidden="true">i</div>
+        <div class="swal-title" id="alertTitle"></div>
+        <p class="swal-text"></p>
+        <button type="button" class="btn-primary swal-btn" data-close>ตกลง</button>
+    </div>
+</div>
+
+<script src="assets/app.js?v=mwge6huy"></script>
+
+<script>
+    window.PAGE_ID = 'equipment';
+    window.CURRENT_USER = 'เจ้าหน้าที่ตัวอย่าง (equipment)';
+</script>
+
+<script>
+    (function () {
+        'use strict';
+
+        /* ต้องล็อกอินก่อน : ไม่มี token หรือหมดอายุ = กลับไปหน้า login */
+        if (!App.auth.require()) {
+            return;
+        }
+
+        /* ---------- ข้อมูลสำรองสำหรับโหมดตัวอย่าง (ไม่มี Apps Script) ---------- */
+        var DEMO_ROWS = [
+            {
+                equipCode: '7440-001-0001', name: 'คอมพิวเตอร์ตั้งโต๊ะ (Dell OptiPlex)',
+                category: 'คอมพิวเตอร์/โน้ตบุ๊ก', department: 'ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก',
+                owner: 'สมชาย ใจดี', acquiredAt: '2023-04-12', status: 'ใช้งาน'
+            },
+            {
+                equipCode: '7440-002-0015', name: 'เครื่องพิมพ์เลเซอร์ HP LaserJet',
+                category: 'เครื่องพิมพ์/สแกนเนอร์', department: 'ศพท.เขตสุขภาพที่ 5 จ.นครปฐม',
+                owner: 'ปวีณา สุขศรี', acquiredAt: '2022-11-08', status: 'ส่งซ่อม'
+            },
+            {
+                equipCode: '7440-003-0007', name: 'โปรเจกเตอร์ Epson EB-X06',
+                category: 'โปรเจกเตอร์/ทีวี', department: 'ศพท.เขตสุขภาพที่ 7 จ.ขอนแก่น',
+                owner: 'อรุณี พรหมมา', acquiredAt: '2024-01-25', status: 'ใช้งาน'
+            },
+            {
+                equipCode: '7440-004-0021', name: 'เครื่องปรับอากาศ Carrier 18,000 BTU',
+                category: 'ครุภัณฑ์สำนักงาน', department: 'ศพท.เขตสุขภาพที่ 4 จ.นนทบุรี สาขาตักศิลา',
+                owner: 'ช่างประจำอาคาร', acquiredAt: '2021-06-30', status: 'ชำรุด'
+            },
+            {
+                equipCode: '7440-005-0003', name: 'โน้ตบุ๊ก ASUS VivoBook',
+                category: 'คอมพิวเตอร์/โน้ตบุ๊ก', department: 'ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก',
+                owner: 'ผู้อำนวยการ', acquiredAt: '2024-08-19', status: 'ใช้งาน'
+            },
+            {
+                equipCode: '7440-006-0011', name: 'เครื่องเสียงห้องประชุม',
+                category: 'เครื่องเสียง', department: 'ศพท.เขตสุขภาพที่ 2 จ.สุโขทัย',
+                owner: 'ธุรการกลาง', acquiredAt: '2020-02-14', status: 'จำหน่าย'
+            },
+            {
+                equipCode: '7440-007-0002', name: 'จอภาพ LED 24 นิ้ว',
+                category: 'จอภาพ/มอนิเตอร์', department: 'ศพท.เขตสุขภาพที่ 1 จ.ลำปาง',
+                owner: 'พีรวิชญ์ นวลทอง', acquiredAt: '2025-03-03', status: 'ใช้งาน'
+            },
+            {
+                equipCode: '7440-008-0009', name: 'สแกนเนอร์ Fujitsu fi-7160',
+                category: 'เครื่องพิมพ์/สแกนเนอร์', department: 'ศพท.เขตสุขภาพที่ 9 จ.สุรินทร์',
+                owner: 'ปวีณา สุขศรี', acquiredAt: '2022-07-11', status: 'ใช้งาน'
+            }
+        ];
+
+        /* ---------- โหลดข้อมูลจริงจากชีต ---------- */
+        function loadRows(done) {
+            var run = (window.google && window.google.script && window.google.script.run) || null;
+            var token = App.auth.token();
+
+            /* ไม่มีเซิร์ฟเวอร์ (preview / GitHub Pages) = โหมดตัวอย่าง */
+            if (!run) {
+                done(DEMO_ROWS);
+                return;
+            }
+
+            if (!token) {
+                App.auth.signOut();
+                return;
+            }
+
+            document.body.classList.add('is-loading');
+
+            /* ในโหมดเชื่อมต่อชีต : แสดงตามข้อมูลจริงเท่านั้น (ชีตว่าง = ตารางว่าง) */
+            try {
+                run.withSuccessHandler(function (res) {
+                    document.body.classList.remove('is-loading');
+
+                    if (!res || !res.ok) {
+                        App.dialog('เซสชันหมดอายุ', (res && res.message) || 'กรุณาเข้าสู่ระบบใหม่');
+                        App.auth.signOut();
+                        return;
+                    }
+
+                    done(res.rows || []);
+                }).withFailureHandler(function (err) {
+                    document.body.classList.remove('is-loading');
+                    App.dialog('ดึงข้อมูลครุภัณฑ์จากชีตไม่สำเร็จ', String((err && err.message) || err));
+                    done([]);
+                }).getEquipmentItems(token);
+            } catch (e) {
+                document.body.classList.remove('is-loading');
+                App.dialog('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', String((e && e.message) || e));
+                done([]);
+            }
+        }
+
+        /* ---------- ส่วนแสดงผล : เริ่มเมื่อได้ข้อมูลแล้ว ---------- */
+        function startWithRows(ROWS) {
+
+        var columns = [
+            { key: 'equipCode', label: 'เลขครุภัณฑ์' },
+            { key: 'name', label: 'ชื่อครุภัณฑ์' },
+            { key: 'category', label: 'หมวดหมู่' },
+            { key: 'department', label: 'หน่วยงาน' },
+            { key: 'owner', label: 'ผู้ครอบครอง' },
+            {
+                key: 'acquiredAt',
+                label: 'วันที่ขึ้นทะเบียน',
+                render: function (row) { return App.thaiDate(row.acquiredAt); },
+                text: function (row) { return App.thaiDate(row.acquiredAt); }
+            },
+            {
+                key: 'status',
+                label: 'สถานะ',
+                render: function (row) { return App.statusBadge(row.status); }
+            }
+        ];
+
+        document.querySelectorAll('[data-user-name]').forEach(function (el) {
+            el.textContent = window.CURRENT_USER || 'ผู้ใช้งาน';
+        });
+
+        App.initShell();
+
+        App.table({
+            theadId: 'tableHead',
+            tbodyId: 'tableBody',
+            infoId: 'tableInfo',
+            pagerId: 'pager',
+            searchId: 'searchInput',
+            pageSizeId: 'pageSize',
+            keyField: 'equipCode',
+            columns: columns,
+            rows: ROWS,
+            defaultSort: 'equipCode',
+            exportName: 'equipment-list.csv',
+            actionTitle: 'ดูรายละเอียดครุภัณฑ์',
+            onAction: function (code) {
+                var item = null;
+                ROWS.forEach(function (row) {
+                    if (String(row.equipCode) === String(code)) {
+                        item = row;
+                    }
+                });
+                if (!item) {
+                    App.dialog('ไม่พบข้อมูล', 'ไม่พบครุภัณฑ์เลขที่ ' + code);
+                    return;
+                }
+                App.dialog(item.equipCode + ' · ' + item.name,
+                    'หมวดหมู่: ' + (item.category || '—') +
+                    '\nหน่วยงาน: ' + (item.department || '—') +
+                    '\nผู้ครอบครอง: ' + (item.owner || '—') +
+                    '\nวันที่ขึ้นทะเบียน: ' + App.thaiDate(item.acquiredAt) +
+                    '\nสถานะ: ' + (item.status || '—'));
+            }
+        });
+        }
+
+        loadRows(startWithRows);
+    })();
+</script>
+
+<script>
+    /* ============================================================
+       NavJS.html — นำทางในหน้าเดียว (client-side navigation)
+       ------------------------------------------------------------
+       กดเมนู ?page=... แล้วสลับเนื้อหาในเอกสารเดิม ไม่โหลดหน้าใหม่ทั้งหน้า
+       จึงไม่มีจอขาว ไม่มีฟอนต์สลับ และไม่มีตัวหมุนขึ้นใหม่ทุกคลิก
+
+       หลักการ
+       1) ดักคลิกเฉพาะลิงก์ของแอป (?page=...) ที่อยู่โดเมนเดียวกัน
+       2) fetch หน้าเป้าหมาย แล้วเอา <body> ใหม่มาสลับของเดิม
+       3) สคริปต์ใน <body> ที่สลับเข้ามาจะไม่รันเอง ต้องสร้างใหม่ให้รันตามลำดับ
+       4) สคริปต์ "สถานะโหลด" ของหน้าใหม่ถูกตัดออก (ไม่ต้องซ่อนเนื้อหาอีก)
+       5) พลาดเมื่อไร (เน็ตหลุด/หน้าผิดรูป) ถอยไปโหลดหน้าใหม่แบบปกติทันที
+       ============================================================ */
+    (function () {
+        'use strict';
+
+        /* สคริปต์นี้ติดมากับ <body> จึงถูกโหลดซ้ำหลังสลับหน้า — ลงทะเบียนครั้งเดียวพอ */
+        if (window.__dtamNav) {
+            return;
+        }
+
+        var nav = window.__dtamNav = { busy: false, pending: '', timer: 0, waitTimer: 0, waitShownAt: 0 };
+
+        /* ---------- สถานะกำลังโหลดตอนสลับหน้า ----------
+           โชว์เมื่อรอเกิน 120ms (เร็วว่านั้นให้ดูเหมือนเปลี่ยนทันที ไม่มีสปินเนอร์วาบ)
+           และถ้าโชว์แล้วให้ค้างอย่างน้อย 200ms เพื่อให้เห็นได้จริง
+           (คืนค่าจำนวน ms ที่ยังต้องรอเพิ่ม) */
+        function beginWait() {
+            if (nav.waitTimer) {
+                window.clearTimeout(nav.waitTimer);
+            }
+
+            nav.waitShownAt = 0;
+
+            nav.waitTimer = window.setTimeout(function () {
+                nav.waitTimer = 0;
+                nav.waitShownAt = Date.now();
+                document.documentElement.classList.add('is-nav-wait');
+            }, 120);
+        }
+
+        function endWait() {
+            if (nav.waitTimer) {
+                window.clearTimeout(nav.waitTimer);
+                nav.waitTimer = 0;
+            }
+
+            var shownAt = nav.waitShownAt || 0;
+
+            nav.waitShownAt = 0;
+            document.documentElement.classList.remove('is-nav-wait');
+
+            return shownAt ? Math.max(0, 200 - (Date.now() - shownAt)) : 0;
+        }
+
+        var LOADER_MARK = 'เติมคลาสที่ <html>';
+
+        function inIframe() {
+            try {
+                return window.top !== window.self;
+            } catch (e) {
+                return true;
+            }
+        }
+
+        /* คืน URL ของหน้าในแอป หรือ null ถ้าไม่ใช่ */
+
+        function appUrl(href) {
+            var url;
+
+            try {
+                url = new URL(href, window.location.href);
+            } catch (e) {
+                return null;
+            }
+
+            if (url.origin !== window.location.origin) {
+                return null;
+            }
+
+            if (!url.searchParams.has('page')) {
+                return null;
+            }
+
+            /* ไม่ต้องพา nav=1 (ตัวจำสถานะโหลด) ติดไปด้วยแล้ว */
+            url.searchParams.delete('nav');
+
+            /* คง token ไว้บน URL (?t=…) เพื่อให้รีเฟรชแล้วไม่ต้องล็อกอินใหม่
+               (storage ใน iframe ของ Apps Script มักถูกบล็อก/ถูกล้าง) */
+            var token = (window.App && window.App.auth) ? window.App.auth.token() : '';
+
+            if (token && url.searchParams.get('page') !== 'login') {
+                url.searchParams.set('t', token);
+            }
+
+            return url;
+        }
+
+        /* ลายเซ็นของหน้า : ไฟล์ + page + scope + no (ไม่สน token / nav)
+           เอาไว้เทียบว่าลิงก์ที่กดคือ "หน้านี้" อยู่แล้วหรือไม่ */
+        function navKey(u) {
+            try {
+                var file = String(u.pathname.split('/').pop() || '').toLowerCase();
+                var page = String(u.searchParams.get('page') || 'form').toLowerCase();
+                var scope = String(u.searchParams.get('scope') || '').toLowerCase();
+                var no = String(u.searchParams.get('no') || '').toUpperCase();
+                return [file, page, scope, no].join('|');
+            } catch (e) {
+                return '';
+            }
+        }
+
+        /* อยู่หน้านี้อยู่แล้ว = ไม่ต้องทำอะไร (กันกดเมนูซ้ำแล้วโหลด/สลับใหม่) */
+        function isSamePage(url) {
+            try {
+                return navKey(url) === navKey(new URL(window.location.href));
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function skip(link) {
+            var target = (link.getAttribute('target') || '').toLowerCase();
+            var href = link.getAttribute('href') || '';
+
+            if (link.hasAttribute('download') || link.hasAttribute('data-no-nav')) {
+                return true;
+            }
+
+            /* อยู่ใน iframe ของ Apps Script + target=_top : ให้เบราว์เซอร์พาออกไปเองตามเดิม */
+            if (target === '_top' && inIframe()) {
+                return true;
+            }
+
+            if (target === '_blank') {
+                return true;
+            }
+
+            return href.charAt(0) === '#' || /^(mailto|tel|javascript):/i.test(href);
+        }
+
+        /* สคริปต์ที่ถูกสลับเข้ามาจะไม่ทำงาน ต้องสร้าง element ใหม่ให้เบราว์เซอร์รัน */
+        function runScripts(scripts) {
+            Array.prototype.forEach.call(scripts, function (old) {
+                var fresh = document.createElement('script');
+
+                Array.prototype.forEach.call(old.attributes, function (attr) {
+                    fresh.setAttribute(attr.name, attr.value);
+                });
+
+                fresh.text = old.textContent;
+                old.parentNode.replaceChild(fresh, old);
+            });
+        }
+
+        function swap(html, url, push) {
+            var doc = new DOMParser().parseFromString(html, 'text/html');
+            var body = doc.body;
+
+            if (!body) {
+                throw new Error('หน้าเป้าหมายไม่มี <body>');
+            }
+
+            var scripts = Array.prototype.slice.call(body.querySelectorAll('script'));
+
+            /* ตัดสคริปต์สถานะโหลดของหน้าใหม่ทิ้ง ไม่งั้นเนื้อหาจะถูกซ่อน 430ms อีก */
+            for (var i = scripts.length - 1; i >= 0; i--) {
+                if ((scripts[i].textContent || '').indexOf(LOADER_MARK) !== -1) {
+                    scripts[i].parentNode.removeChild(scripts[i]);
+                    scripts.splice(i, 1);
+                }
+            }
+
+            document.title = doc.title || document.title;
+
+            /* CSS เฉพาะหน้าอยู่ใน <head> (แต่ละหน้ามี <style> ของตัวเอง)
+               ถ้าไม่สลับตามไปด้วย หน้าใหม่จะถูกจัดสไตล์ด้วย CSS ของหน้าเดิม
+               = หน้าตาเพี้ยน/เห็นเป็นกระพริบตอนเปลี่ยนหน้า
+               สลับเฉพาะ "ของเฉพาะหน้า" : ตัวที่ข้อความไม่อยู่ในชุดใหม่เอาออก
+               ตัวที่ยังไม่มีค่อยเพิ่ม — สไตล์กลาง (Styles) ไม่ถูกสร้างใหม่
+               จึงไม่เกิดอาการหน้าจอไร้สไตล์ชั่วขณะ */
+            var newStyleTexts = [];
+
+            Array.prototype.forEach.call(doc.head.querySelectorAll('style'), function (el) {
+                newStyleTexts.push(el.textContent);
+            });
+
+            if (newStyleTexts.length) {
+                Array.prototype.forEach.call(Array.prototype.slice.call(document.head.querySelectorAll('style')), function (el) {
+                    if (newStyleTexts.indexOf(el.textContent) === -1) {
+                        el.parentNode.removeChild(el);
+                    }
+                });
+
+                Array.prototype.forEach.call(doc.head.querySelectorAll('style'), function (el) {
+                    var exists = Array.prototype.some.call(document.head.querySelectorAll('style'), function (cur) {
+                        return cur.textContent === el.textContent;
+                    });
+
+                    if (!exists) {
+                        var clone = document.createElement('style');
+                        clone.textContent = el.textContent;
+                        document.head.appendChild(clone);
+                    }
+                });
+            }
+
+            /* PAGE_ID / CURRENT_USER เป็นค่าของหน้าเดิม ล้างก่อนแล้วให้สคริปต์หน้าใหม่ตั้งเอง */
+            try {
+                delete window.PAGE_ID;
+            } catch (e) {
+                window.PAGE_ID = '';
+            }
+
+            /* จำสถานะเมนูข้างของหน้าเดิม (การสลับเนื้อหาจะสร้างเมนูใหม่ขึ้นมา)
+               แล้วคงสถานะเดิมไว้ ไม่งั้นเมนูจะเปิด/ปิดใหม่ทุกครั้งที่เปลี่ยนหน้า = กระพริบ */
+            var live = document.body;
+            var sidebarOpen = !live.classList.contains('sidebar-collapsed');
+
+            window.__dtamSidebarState = sidebarOpen;
+
+            /* ============================================================
+               สลับเนื้อหา "ในเอกสารเดิม" ไม่สร้าง <body> ใหม่
+               ------------------------------------------------------------
+               เดิมใช้ documentElement.replaceChild(body, document.body) แล้ว
+               ย้ายแถบหัว/เมนูข้างกลับเข้าไป — การถอดเมนูข้างออกจากเอกสารแล้ว
+               ใส่กลับทำให้เบราว์เซอร์ต้อง rasterise พื้นสีเข้มของเมนูใหม่
+               เห็นเป็นเมนูข้างกระพริบหนึ่งเฟรม (โค้ดเดิมจึงต้องคั่นด้วยคอมเมนต์
+               เรื่อง "สร้างใหม่ทุกครั้ง = กระพริบ")
+               ตอนนี้คง <body> เดิมไว้ และคงแถบหัว/เมนูข้างไว้ในตำแหน่งเดิม
+               ไม่ถอดออกจากเอกสารเลย => ไม่มีเฟรมที่ขาดเมนู
+               ============================================================ */
+            var keptNew = [];
+            var keptOld = [];
+
+            ['.site-header', '.app-header', '#sidebar'].forEach(function (sel) {
+                var oldEl = live.querySelector(sel);
+                var newEl = body.querySelector(sel);
+
+                if (!oldEl || !newEl) {
+                    return;
+                }
+
+                /* เมนูบน : ไม่ให้แผงที่เปิดค้างอยู่ติดไปหน้าถัดไป */
+                oldEl.classList.remove('nav-open');
+                oldEl.classList.remove('nav-closing');
+                oldEl.classList.remove('nav-wide-in');
+
+                var navToggle = oldEl.querySelector('#siteNavToggle');
+
+                if (navToggle) {
+                    navToggle.setAttribute('aria-expanded', 'false');
+                }
+
+                /* ล้างไฮไลต์ของหน้าเดิม (ทั้งเมนูข้างและเมนูบน)
+                   เดี๋ยวใส่ไฮไลต์ของหน้าเป้าหมายกลับในงานเดียวกันด้านล่าง */
+                Array.prototype.forEach.call(oldEl.querySelectorAll('.nav-link.active'), function (el) {
+                    el.classList.remove('active');
+                });
+
+                Array.prototype.forEach.call(oldEl.querySelectorAll('.site-nav a.is-active'), function (el) {
+                    el.classList.remove('is-active');
+                });
+
+                keptNew.push(newEl);
+                keptOld.push(oldEl);
+            });
+
+            /* คลาส/แอตทริบิวต์ของ <body> : ใช้ของหน้าใหม่ (page-app / form-page / ...) */
+            Array.prototype.forEach.call(Array.prototype.slice.call(body.attributes), function (attr) {
+                if (live.getAttribute(attr.name) !== attr.value) {
+                    live.setAttribute(attr.name, attr.value);
+                }
+            });
+
+            Array.prototype.forEach.call(Array.prototype.slice.call(live.attributes), function (attr) {
+                if (!body.hasAttribute(attr.name)) {
+                    live.removeAttribute(attr.name);
+                }
+            });
+
+            /* ตัดเนื้อหาเดิมออก เหลือไว้เฉพาะของที่ต้องคงอยู่ */
+            Array.prototype.slice.call(live.children).forEach(function (child) {
+                if (keptOld.indexOf(child) === -1) {
+                    live.removeChild(child);
+                }
+            });
+
+            /* วางเนื้อหาใหม่ตามลำดับเดิม : ของที่คงไว้ไม่ถูกถอด/ใส่กลับ
+               (ถ้าตำแหน่งตรงอยู่แล้วก็ไม่แตะ) */
+            var kids = Array.prototype.slice.call(body.children);
+            var nextRef = null;
+
+            for (var k = kids.length - 1; k >= 0; k--) {
+                var newKid = kids[k];
+                var keptIdx = keptNew.indexOf(newKid);
+                var node = keptIdx === -1 ? newKid : keptOld[keptIdx];
+
+                if (nextRef === null) {
+                    if (node.parentNode !== live || node.nextSibling !== null) {
+                        live.appendChild(node);
+                    }
+                } else if (node.nextSibling !== nextRef) {
+                    live.insertBefore(node, nextRef);
+                }
+
+                nextRef = node;
+            }
+
+            /* ของที่คงไว้ (แถบหัว/เมนูข้าง) : ใส่ "ตัวเดิม" กลับแทนตัวใหม่
+               （ตัวใหม่จากหน้าเป้าหมายถูกทิ้ง）— ภาพโปรไฟล์/ตัวอักษร/สถานะเมนู
+               จึงไม่ถูกวาดใหม่เลย */
+            keptNew.forEach(function (newEl, i) {
+                /* ต้องเช็กว่าตัวใหม่ยัง "อยู่ในเอกสารจริง" ก่อน
+                   ถ้าตัวใหม่ถูกแทนไปแล้วในลูปประกอบเนื้อหา (เช่น .site-header
+                   ที่เป็นลูกของ <body> โดยตรง) การ replaceChild ตรงนี้จะย้าย
+                   ตัวเดิมออกจากเอกสารไปไว้ในเอกสารที่แยกทิ้ง = แถบหัวหายทั้งแถบ */
+                if (newEl.parentNode && live.contains(newEl.parentNode)) {
+                    newEl.parentNode.replaceChild(keptOld[i], newEl);
+                }
+            });
+
+            if (!sidebarOpen) {
+                live.classList.add('sidebar-collapsed');
+            }
+
+            /* เติมคลาสก่อนรันสคริปต์ของหน้าใหม่ :
+               สคริปต์บางหน้า (Dashboard) เรนเดอร์ตารางทันทีและบังคับวัดเลย์เอาต์
+               ถ้าปล่อยให้อนิเมชัน "เข้าหน้า" (fade-in / page-enter) เริ่มไปก่อน
+               แล้วค่อยเติม is-nav เพื่อปิดทีหลัง จะเห็นเนื้อหากระพริบหนึ่งครั้ง */
+            var root = document.documentElement;
+            root.classList.remove('is-loading');
+            root.classList.remove('is-loaded');
+            root.classList.add('is-nav');
+            root.classList.remove('is-leaving');
+
+            /* ไม่ใส่ is-nav-in : หน้าใหม่ขึ้นที่ opacity เต็มทันที
+               (เดิมเฟดเข้าจาก opacity 0 = เห็นพื้นหน้าว่างวาบก่อนเนื้อหามา) */
+
+            /* อัปเดต URL ก่อนรันสคริปต์ของหน้าใหม่
+               สคริปต์ที่อ่าน ?page= / ?scope= (PubHead ไฮไลต์เมนู, Dashboard กรอง "งานของฉัน")
+               จะได้เห็นค่าใหม่ทันที — เดิม pushState เกิดหลังสคริปต์รัน
+               ไฮไลต์/ตัวกรองจึงค้างเป็นของหน้าเดิม = เห็นเมนูกระพริบ
+               (และงานของฉันอาจแสดงชุดข้อมูลผิดรอบ) */
+            if (push) {
+                try {
+                    window.history.pushState({ dtam: 1 }, '', url.pathname + url.search + url.hash);
+                } catch (e) { }
+            }
+
+            /* เขียน page + token ลง URL จริงของเว็บแอป (…/exec) ด้วย
+               เพื่อให้กดรีเฟรชแล้วกลับมาหน้านี้พร้อม session เดิม
+               ไม่ต้องล็อกอินใหม่ (ดู App.sync) */
+            if (window.App && typeof window.App.sync === 'function') {
+                window.App.sync((url.searchParams && url.searchParams.get('page')) || 'form', url.search);
+            }
+
+            runScripts(scripts);
+
+            /* เฟดเข้าอ่อน ๆ (0.24 วิ) ให้รู้ว่าหน้าใหม่ขึ้นแล้ว
+               เริ่มหลังสลับเสร็จ จึงไม่ทับช่วงรอข้อมูล */
+            root.classList.add('is-nav-in');
+
+            if (nav.timer) {
+                window.clearTimeout(nav.timer);
+            }
+
+            nav.timer = window.setTimeout(function () {
+                nav.timer = 0;
+                root.classList.remove('is-nav-in');
+            }, 300);
+
+            /* ไฮไลต์เมนูของหน้าเป้าหมาย : ใส่ "หลัง" สคริปต์ของหน้าใหม่รันจบ
+               - สคริปต์ของหน้า (PubHead / AppJS) คิดไฮไลต์เองจาก URL ตอนที่รัน
+                 ถ้าเราใส่ก่อน มันจะทับค่าของเรา — หรือถ้าปล่อยให้มันใส่เอง
+                 ก็มีจังหวะที่ยังไม่ใส่ = เห็นเมนูกระพริบ
+               - ทั้งหมดนี้อยู่ในงานเดียวกับ swap เบราว์เซอร์จึงวาดครั้งเดียว
+                 = ไม่มีเฟรมที่ไฮไลต์หาย */
+            var wantPage = '';
+
+            if (url && url.searchParams) {
+                wantPage = url.searchParams.get('page') || 'form';
+
+                if (wantPage === 'dashboard' && url.searchParams.get('scope') === 'mine') {
+                    wantPage = 'mywork';
+                }
+            }
+
+            if (wantPage) {
+                Array.prototype.forEach.call(document.querySelectorAll('.nav-link[data-page], .site-nav a[data-page]'), function (link) {
+                    var on = link.getAttribute('data-page') === wantPage;
+
+                    if (link.closest('.site-nav')) {
+                        link.classList.toggle('is-active', on);
+                    } else {
+                        link.classList.toggle('active', on);
+                    }
+
+                    /* หน้านีี้กดซ้ำไม่ได้ : บอกโปรแกรมอ่านจอด้วย */
+                    if (on) {
+                        link.setAttribute('aria-current', 'page');
+                    } else {
+                        link.removeAttribute('aria-current');
+                    }
+                });
+            }
+
+            window.scrollTo(0, 0);
+        }
+
+        /* แสดงหน้าใหม่ : สลับเนื้อหาให้จบในเฟรมเดียว
+           ------------------------------------------------------------
+           เดิมมีจังหวะ "เฟดออก 200ms → สลับ → เฟดเข้า" วัดแล้วพบว่าเนื้อหาถูกซ่อน
+           จน opacity = 0 ภายในเฟรมเดียว แล้วพื้นหน้าว่างค้างอยู่ ~215ms ก่อนหน้าใหม่
+           จะค่อย ๆ ขึ้น = เห็นเป็นจอกระพริบทุกครั้งที่กดเมนู
+           ตอนนี้สลับทันที (ยังดึง HTML ให้เสร็จก่อน เนื้อหาเดิมจึงไม่หายระหว่างรอเน็ต)
+           แล้วขึ้นหน้าใหม่ที่ opacity เต็มในเฟรมถัดไป — ไม่มีเฟรมว่างเลย */
+        function show(html, url, push) {
+            var root = document.documentElement;
+
+            root.classList.add('is-nav');
+            root.classList.remove('is-loading');
+            root.classList.remove('is-loaded');
+
+            /* เคลียร์คลาส/ตัวจับเวลาที่ค้างจากรอบก่อน ไม่ให้ทับสถานะรอบนี้ */
+            if (nav.timer) {
+                window.clearTimeout(nav.timer);
+                nav.timer = 0;
+            }
+
+            root.classList.remove('is-nav-in');
+            root.classList.remove('is-leaving');
+            endWait();
+
+            /* จำตำแหน่งเมนูของหน้าเดิมไว้ — หน้า login ใช้ทำ FLIP
+               ให้เมนูไหลเข้าไปแทนปุ่มที่หายไป แทนการกระโดดไปตำแหน่งใหม่ทันที */
+            try {
+                var navEl = document.getElementById('siteNav');
+
+                if (navEl) {
+                    window.sessionStorage.setItem('dtam:nav-left',
+                        String(Math.round(navEl.getBoundingClientRect().left)));
+                }
+            } catch (e) { }
+
+            /* ให้สคริปต์ของหน้าเดิมเคลียร์ timer ของตัวเองก่อน (นาฬิกาใน AppJS) */
+            try {
+                window.dispatchEvent(new CustomEvent('dtam:before-navigate'));
+            } catch (e) { }
+
+            var hold = endWait();
+            var token = nav.token;
+
+            nav.busy = false;
+
+            /* กดเมนูอื่นค้างไว้ระหว่างดึงข้อมูล : ข้ามหน้านี้ไปหน้าล่าสุดเลย
+               (สลับหน้านี้ก่อนแล้วค่อยสลับอีกที = เห็นเนื้อหากระพริบสองรอบ) */
+            if (nav.pending) {
+                var next = nav.pending;
+                nav.pending = '';
+                go(next, true);
+                return;
+            }
+
+            if (hold > 0) {
+                /* ถ้าสปินเนอร์ขึ้นไปแล้ว ให้ค้างไว้ให้เห็นก่อนค่อยสลับหน้า */
+                window.setTimeout(function () {
+                    if (token !== nav.token) {
+                        return;
+                    }
+
+                    swap(html, url, push);
+                }, hold);
+                return;
+            }
+
+            swap(html, url, push);
+        }
+
+        /* ดึง HTML ของหน้าเป้าหมาย
+           - อยู่ใน iframe ของ Apps Script : เรียกผ่าน google.script.run (getPageHtml)
+             เพราะ fetch หน้าเดียวกันจากใน iframe บางเครื่องถูกบล็อก/ได้หน้า wrapper
+             → สลับหน้าไม่ได้ แล้วต้องโหลดใหม่ทั้งหน้า = กระพริบ
+           - อยู่นอก Apps Script (เช่น preview/ไฟล์บนเว็บ) : ใช้ fetch เหมือนเดิม */
+        function loadHtml(url, done, fail) {
+            var page = url.searchParams.get('page') || 'form';
+            var runner = window.google && window.google.script && window.google.script.run;
+            var finished = false;
+
+            /* คืน true = ได้หน้าที่ใช้ได้แล้ว (สลับหน้าให้เลย) */
+            function deliver(html) {
+                if (finished) {
+                    return true;
+                }
+
+                if (!html || html.indexOf('<body') === -1) {
+                    /* หน้าเปล่า/หน้า wrapper ของ Google — เอามาสลับไม่ได้ */
+                    return false;
+                }
+
+                finished = true;
+                done(html);
+                return true;
+            }
+
+            function viaScriptRun(ok, no) {
+                if (!runner) {
+                    no();
+                    return;
+                }
+
+                try {
+                    runner
+                        .withSuccessHandler(function (html) {
+                            if (!deliver(html)) {
+                                ok();
+                            }
+                        })
+                        .withFailureHandler(no)
+                        .getPageHtml(page, (window.App && window.App.auth) ? window.App.auth.token() : '');
+                } catch (e) {
+                    no();
+                }
+            }
+
+            function viaFetch(ok, no) {
+                fetch(url.href, { credentials: 'same-origin' })
+                    .then(function (res) {
+                        if (!res.ok) {
+                            throw new Error('HTTP ' + res.status);
+                        }
+
+                        return res.text();
+                    })
+                    .then(function (html) {
+                        if (!deliver(html)) {
+                            ok();
+                        }
+                    })
+                    .catch(no);
+            }
+
+            /* ลองช่องทางหลักก่อน ถ้าล้มค่อยลองอีกช่องทาง
+               (โหลดใหม่ทั้งหน้าคือสิ่งที่เห็นเป็น "กระพริบ" จึงขอลองให้ครบก่อน) */
+            var order = (inIframe() && runner) ? [viaScriptRun, viaFetch] : [viaFetch, viaScriptRun];
+            var i = 0;
+
+            (function next() {
+                if (finished) {
+                    return;
+                }
+
+                while (i < order.length) {
+                    try {
+                        order[i++](next, next);
+                        return;
+                    } catch (e) { }
+                }
+
+                fail();
+            })();
+        }
+
+        /* ไปหน้าในแอป : ดึงเนื้อหาให้เสร็จก่อน แล้วค่อยสลับทันที (ไม่เฟดจาง)
+           ระหว่างรอ เนื้อหาเดิมยังอยู่ครบ — ไม่มีช่วงจอว่างให้เห็นเป็นกระพริบ */
+        function go(href, push) {
+            var url = appUrl(href);
+
+            if (!url) {
+                return;
+            }
+
+            /* กดเมนูของหน้าที่เปิดอยู่ : ไม่ต้องสลับ/โหลดใหม่ */
+            if (isSamePage(url)) {
+                return;
+            }
+
+            /* ระหว่างกำลังดึง/สลับหน้า : จำเมนูล่าสุดไว้ ไปต่อเมื่อรอบนี้จบ
+               (เดิมคลิกหลุดเงียบ ๆ เหมือนเว็บค้าง) */
+            if (nav.busy) {
+                nav.pending = url.href;
+                return;
+            }
+
+            /* เปิดไฟล์ตรง ๆ (file://) สลับหน้าในที่เดียวไม่ได้เด็ดขาด
+               เพราะเบราว์เซอร์บล็อก fetch ข้ามเอกสารบน file:// (origin = null)
+               และไม่มี google.script.run — ไม่ต้องเสียเวลาลอง
+               การโหลดใหม่ทั้งหน้าเป็นเรื่องปกติของโหมดนี้ */
+            if (window.location.protocol === 'file:') {
+                window.location.href = url.href;
+                return;
+            }
+
+            nav.busy = true;
+            nav.token = (nav.token || 0) + 1;
+
+            /* แสดงสถานะกำลังโหลดระหว่างรอหน้าใหม่ : แถบวิ่งบาง ๆ + ตัวหมุน
+               (เนื้อหาเดิมยังอยู่ครบ ไม่ถูกซ่อน = ไม่มีจอว่าง) */
+            beginWait();
+
+            var token = nav.token;
+
+            loadHtml(url, function (html) {
+                /* มีรอบใหม่แซงไปแล้ว (เช่น กดเมนูอื่นระหว่างรอ) — ทิ้งผลนี้ */
+                if (token !== nav.token) {
+                    return;
+                }
+
+                show(html, url, push);
+            }, function () {
+                /* มีรอบใหม่แซงไปแล้ว : อย่าไปแตะสถานะของรอบนั้น */
+                if (token !== nav.token) {
+                    return;
+                }
+
+                /* พลาดแล้ว : โหลดหน้าใหม่ตามปกติ จะได้ไม่ค้างอยู่หน้าเดิม
+                   ไม่จำ "ใช้สลับหน้าไม่ได้" ไว้ใน session อีกแล้ว
+                   (ของเดิมจำไว้ ทำให้คลิกถัด ๆ ไปเป็นการโหลดใหม่ทั้งหน้า
+                    = กระพริบทุกครั้งตลอดทั้งเซสชัน) */
+                document.documentElement.classList.remove('is-leaving');
+                endWait();
+                nav.busy = false;
+                window.location.href = url.href;
+            });
+        }
+
+        document.addEventListener('click', function (event) {
+            if (event.defaultPrevented || event.button !== 0 || event.metaKey ||
+                event.ctrlKey || event.shiftKey || event.altKey) {
+                return;
+            }
+
+            var link = event.target && event.target.closest ? event.target.closest('a[href]') : null;
+
+            if (!link || skip(link)) {
+                return;
+            }
+
+            var url = appUrl(link.href);
+
+            if (!url) {
+                return;
+            }
+
+            event.preventDefault();
+            go(url.href, true);
+        }, true);
+
+        /* ให้หน้าอื่นสั่งเปลี่ยนหน้าแบบสลับในที่เดียวได้ (เช่น ปุ่มเข้าสู่ระบบ)
+           ต้องส่ง URL แบบ ?page=… ไม่ใช่ URL เต็ม : appUrl() จะเทียบกับโดเมน
+           ของเอกสารปัจจุบัน (ใน Apps Script คือโดเมน sandbox) */
+        nav.go = go;
+
+        /* ปุ่มย้อนกลับ / ไปข้างหน้า ของเบราว์เซอร์ */
+        window.addEventListener('popstate', function () {
+            go(window.location.href, false);
+        });
+    })();
+</script>
+
+</body>
+
+</html>

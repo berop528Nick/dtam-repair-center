@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>แจ้งปัญหาคอมพิวเตอร์ · ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก</title>
+    <meta name="theme-color" content="#1a7a44">
+    <!-- สีพื้นตั้งต้น: ให้หน้าใหม่มีพื้นสีแอปตั้งแต่เพนต์แรก กันจอขาวแวบตอนเปลี่ยนหน้า
+         (ค่าตรงกับ --body-bg ใน Styles.html) -->
+    <style>html{background-color:#f4f7f9}</style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- ฟอนต์: preload เฉพาะไฟล์ Kanit ที่ใช้จริง (ชุดไทย/ละติน 2 น้ำหนัก) + display=optional
+         ถ้าฟอนต์ยังไม่พร้อมภายใน ~100ms หน้าจะใช้ฟอนต์สำรองทั้งหน้า และ "ไม่สลับกลางหน้า"
+         จึงไม่มีอาการฟ้อนเพี้ยนระหว่างโหลด (เดิมใช้ swap = เห็นฟอนต์เปลี่ยนกลางหน้า) -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKZ-Go6G5tXcraBGwCYdA.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKZ-Go6G5tXcraVGwA.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWzVaF5NQ.woff2">
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+        href="https://fonts.gstatic.com/s/kanit/v17/nKKU-Go6G5tXcr5mOBWnVaE.woff2">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500&family=Sarabun:wght@400;500&display=optional"
+        rel="stylesheet">
+    <?!= include('Styles') ?>
+    <style>
+        /* ---------- ฟอร์มแจ้งปัญหา (หน้าเปิดสาธารณะ) ---------- */
+
+        body.form-page {
+            padding-bottom: 40px;
+            background:
+                radial-gradient(900px 380px at 50% -80px, rgba(26, 122, 68, 0.10), transparent 70%),
+                linear-gradient(180deg, #f5faf7 0%, #f1f5f3 240px, #f4f6f5 100%);
+        }
+
+        /* ---------- hero ---------- */
+
+        .form-wrap {
+            width: 100%;
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        .hero {
+            padding: 26px 8px 20px;
+            text-align: center;
+        }
+
+        .hero .brand-logo {
+            width: 176px;
+            height: auto;
+        }
+
+        .hero h1 {
+            margin: 14px 0 6px;
+            font-size: 1.35rem;
+            font-weight: 500;
+            color: #22463a;
+        }
+
+        .hero p {
+            margin: 0;
+            font-size: 0.8125rem;
+            line-height: 1.7;
+            color: #6b7c87;
+        }
+
+        /* ---------- การ์ดฟอร์ม ---------- */
+
+        .repair-card {
+            overflow: hidden;
+            background: #fff;
+            border: 1px solid #e4ece8;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(23, 64, 45, 0.08);
+        }
+
+        .card-head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 22px;
+            color: #fff;
+            background: var(--brand-green);
+        }
+
+        .card-head h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .card-head .chip {
+            margin-left: auto;
+            padding: 3px 10px;
+            font-size: 0.7rem;
+            background: rgba(255, 255, 255, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            border-radius: 999px;
+        }
+
+        .card-head .chip .req {
+            color: #ffd9d9;
+        }
+
+        .section {
+            padding: 20px 22px;
+            border-bottom: 1px solid #eef3f0;
+        }
+
+        .section:last-of-type {
+            border-bottom: 0;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 0 14px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #245740;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 15px;
+            background: var(--brand-green);
+            border-radius: 2px;
+        }
+
+        .section-help {
+            margin: -6px 0 12px;
+            font-size: 0.72rem;
+            color: #8b9a93;
+        }
+
+        /* ---------- ฟิลด์ ---------- */
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px 16px;
+        }
+
+        .field.full {
+            grid-column: 1 / -1;
+        }
+
+        .field-label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: #35474f;
+            transition: color 0.18s ease;
+        }
+
+        /* label ที่ผูกกับช่องกรอก : เอาเมาส์วาง/กำลังกรอก แล้วเปลี่ยนเป็นสีเขียว */
+        label.field-label {
+            cursor: pointer;
+        }
+
+        label.field-label:hover,
+        .field:focus-within .field-label {
+            color: var(--brand-green);
+        }
+
+        .req {
+            color: #d64545;
+        }
+
+        .label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .label-row .field-label {
+            margin: 0;
+        }
+
+        .toggle-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            color: #a24b40;
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.18s ease;
+        }
+
+        .toggle-inline:hover {
+            color: #7f3a31;
+        }
+
+        .form-control {
+            height: 40px;
+            font-size: 0.875rem;
+            border: 1px solid #dbe4df;
+            border-radius: 9px;
+            transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        /* เอาเมาส์ผ่านช่องกรอก : ขอบเขียว + ออร่ารอบช่อง ตั้งแต่ยังไม่คลิก */
+        .form-control:hover:not(:focus):not(:disabled) {
+            background: #fbfefc;
+            border-color: #a9cdb9;
+            box-shadow: 0 0 0 3px rgba(26, 122, 68, 0.12), 0 2px 10px rgba(26, 122, 68, 0.1);
+        }
+
+        .form-control:focus {
+            border-color: var(--brand-green);
+            box-shadow: 0 0 0 3px rgba(26, 122, 68, 0.13);
+        }
+
+        textarea.form-control {
+            height: auto;
+            min-height: 78px;
+            padding: 0.55rem 0.8rem;
+            line-height: 1.65;
+            resize: vertical;
+        }
+
+        .is-readonly {
+            color: #5b6b76;
+            background: #f2f5f3;
+        }
+
+        .field-help {
+            margin: 6px 0 0;
+            font-size: 0.7rem;
+            color: #8b9a93;
+        }
+
+        /* ---------- ช่องทางติดต่อกลับ ---------- */
+
+        .line-group {
+            max-height: 340px;
+            margin-top: 14px;
+            overflow: hidden;
+            opacity: 1;
+            transform: translateY(0);
+            transition: max-height 0.3s ease, margin-top 0.3s ease, opacity 0.22s ease,
+                transform 0.24s ease;
+        }
+
+        .line-group.is-collapsed {
+            max-height: 0;
+            margin-top: 0;
+            opacity: 0;
+            transform: translateY(-4px);
+            pointer-events: none;
+        }
+
+        .contact-methods {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .contact-option {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .contact-option input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+        }
+
+        .contact-option-body {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 16px;
+            font-size: 0.82rem;
+            color: #3d5a4c;
+            background: #fbfdfc;
+            border: 1.5px solid #dbe4df;
+            border-radius: 999px;
+            transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease,
+                box-shadow 0.18s ease;
+        }
+
+        .contact-option-body svg {
+            width: 16px;
+            height: 16px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.6;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .contact-option:hover .contact-option-body {
+            background: #f5fbf7;
+            border-color: #a9cdb9;
+            box-shadow: 0 0 0 3px rgba(26, 122, 68, 0.08);
+        }
+
+        .contact-option input:checked + .contact-option-body {
+            font-weight: 500;
+            color: var(--brand-green);
+            background: #eaf6ee;
+            border-color: var(--brand-green);
+            box-shadow: 0 0 0 3px rgba(26, 122, 68, 0.12);
+        }
+
+        .contact-option input:focus-visible + .contact-option-body {
+            outline: 2px solid var(--brand-green);
+            outline-offset: 2px;
+        }
+
+        /* ---------- รูปถ่าย ---------- */
+
+        .upload-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .upload-slot {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 7px;
+            padding: 10px;
+            text-align: center;
+            background: #fbfdfc;
+            border: 1.5px dashed #cfe0d6;
+            border-radius: 12px;
+            transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .upload-slot:hover {
+            background: #f5fbf7;
+            border-color: var(--brand-green);
+            box-shadow: 0 0 0 3px rgba(26, 122, 68, 0.08);
+        }
+
+        .upload-slot.has-file {
+            background: #fff;
+            border-style: solid;
+        }
+
+        .upload-slot {
+            cursor: pointer;
+        }
+
+        .upload-slot:focus-visible {
+            outline: 2px solid var(--brand-green);
+            outline-offset: 2px;
+        }
+
+        .upload-slot.is-dragover {
+            background: #eef9f2;
+            border-color: var(--brand-green);
+            border-style: solid;
+            box-shadow: inset 0 0 0 2px rgba(26, 122, 68, 0.12);
+        }
+
+        .upload-count {
+            margin: -2px 0 12px;
+            font-size: 0.72rem;
+            color: #8b9a93;
+        }
+
+        .upload-count.is-complete {
+            font-weight: 500;
+            color: var(--brand-green);
+        }
+
+        .thumb {
+            position: relative;
+        }
+
+        .thumb-remove {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.55);
+            border: 0;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .thumb-remove:hover {
+            background: #c0392b;
+        }
+
+        .form-control.is-invalid {
+            background: #fff8f8;
+            border-color: #e05b5b;
+            box-shadow: 0 0 0 3px rgba(224, 91, 91, 0.12);
+        }
+
+        .thumb {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 88px;
+            overflow: hidden;
+            color: #a9c0b4;
+            background: #eff4f1;
+            border-radius: 9px;
+        }
+
+        .thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .thumb svg {
+            width: 30px;
+            height: 30px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.5;
+        }
+
+        .pick-btn {
+            width: 100%;
+            padding: 6px 8px;
+            font-family: inherit;
+            font-size: 0.75rem;
+            color: #2c5c45;
+            background: #fff;
+            border: 1px solid #cfe0d6;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease,
+                box-shadow 0.18s ease;
+        }
+
+        .pick-btn:hover {
+            color: var(--brand-green);
+            background: #eef7f1;
+            border-color: #a9cdb9;
+            box-shadow: 0 0 0 3px rgba(26, 122, 68, 0.1);
+        }
+
+        .file-name {
+            max-width: 100%;
+            overflow: hidden;
+            font-size: 0.68rem;
+            color: #8b9a93;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-name.has-file {
+            color: var(--brand-green);
+        }
+
+        /* ---------- ช่องทางติดต่อผู้แจ้ง ---------- */
+
+        .qr-upload {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            min-height: 60px;
+            padding: 8px 10px;
+            background: #fbfdfc;
+            border: 1.5px dashed #cfe0d6;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .qr-upload:hover {
+            background: #f5fbf7;
+            border-color: var(--brand-green);
+            box-shadow: 0 0 0 3px rgba(26, 122, 68, 0.08);
+        }
+
+        .qr-upload:focus-visible {
+            outline: 2px solid var(--brand-green);
+            outline-offset: 2px;
+        }
+
+        .qr-upload.has-file {
+            background: #fff;
+            border-style: solid;
+        }
+
+        .qr-upload.is-dragover {
+            background: #eef9f2;
+            border-color: var(--brand-green);
+            border-style: solid;
+            box-shadow: inset 0 0 0 2px rgba(26, 122, 68, 0.12);
+        }
+
+        .qr-thumb {
+            position: relative;
+            flex: 0 0 46px;
+            width: 46px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: #a9c0b4;
+            background: #eff4f1;
+            border-radius: 9px;
+        }
+
+        .qr-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .qr-thumb svg {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.5;
+        }
+
+        .qr-thumb .thumb-remove {
+            top: 3px;
+            right: 3px;
+            width: 18px;
+            height: 18px;
+            font-size: 12px;
+        }
+
+        .qr-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .qr-info strong {
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: #3d5a4c;
+        }
+
+        .qr-name {
+            max-width: 100%;
+            overflow: hidden;
+            font-size: 0.68rem;
+            color: #8b9a93;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .qr-name.has-file {
+            color: var(--brand-green);
+        }
+
+        .thumb img,
+        .qr-thumb img {
+            animation: thumb-in 0.22s ease;
+        }
+
+        @keyframes thumb-in {
+            from {
+                opacity: 0;
+                transform: scale(0.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* ---------- ปุ่มท้ายการ์ด ---------- */
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 16px 22px;
+            background: #fafcfb;
+        }
+
+        .btn-primary {
+            padding: 0.6rem 1.6rem;
+            font-weight: 500;
+            border-radius: 9px;
+            box-shadow: 0 4px 12px rgba(26, 122, 68, 0.22);
+            transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease,
+                transform 0.18s ease;
+        }
+
+        /* เอาเมาส์ผ่านปุ่มหลัก : ออร่าเขียวและยกขึ้นเล็กน้อย */
+        .btn-primary:hover {
+            box-shadow: 0 6px 18px rgba(26, 122, 68, 0.32), 0 0 0 3px rgba(26, 122, 68, 0.14);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            box-shadow: 0 3px 10px rgba(26, 122, 68, 0.26);
+            transform: translateY(0);
+        }
+
+        .btn-ghost {
+            padding: 0.6rem 1.4rem;
+            font-family: inherit;
+            font-size: 0.875rem;
+            color: #3b4a55;
+            background: #fff;
+            border: 1px solid #d7dee3;
+            border-radius: 9px;
+            cursor: pointer;
+            transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease,
+                box-shadow 0.18s ease;
+        }
+
+        .btn-ghost:hover {
+            color: var(--brand-green);
+            background: #f4faf6;
+            border-color: #b9d3c4;
+            box-shadow: 0 0 0 3px rgba(26, 122, 68, 0.08);
+        }
+
+        .form-footer {
+            margin: 18px 0 0;
+            font-size: 0.72rem;
+            color: #8b9a93;
+            text-align: center;
+        }
+
+        /* ---------- จอคอมพิวเตอร์ : ใช้ความกว้างของจอเต็มที่ ---------- */
+
+        @media (min-width: 900px) {
+            .form-wrap {
+                max-width: 1120px;
+                padding: 0 24px;
+            }
+
+            .hero {
+                display: flex;
+                align-items: center;
+                gap: 22px;
+                padding: 22px 6px 18px;
+                text-align: left;
+            }
+
+            .hero .brand-logo {
+                width: 150px;
+            }
+
+            .hero-text h1 {
+                margin: 0 0 4px;
+                font-size: 1.45rem;
+            }
+
+            .card-head {
+                padding: 16px 26px;
+            }
+
+            .section {
+                padding: 22px 26px;
+            }
+
+            .grid {
+                gap: 16px 20px;
+            }
+
+            .thumb {
+                height: 118px;
+            }
+
+            textarea.form-control {
+                min-height: 96px;
+            }
+
+            .actions {
+                padding: 18px 26px;
+            }
+        }
+
+        /* จอกว้างพอ : ข้อมูลครุภัณฑ์เรียง 2 ช่องในแถวเดียว */
+        @media (min-width: 1024px) {
+            .grid--equip {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 640px) {
+            .grid,
+            .upload-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero {
+                padding-top: 20px;
+            }
+
+            .hero .brand-logo {
+                width: 150px;
+            }
+
+            .card-head .chip {
+                margin-left: 0;
+            }
+
+            .section {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body class="page-app form-page">
+
+    <?!= include('PubHead') ?>
+
+    <main class="form-wrap">
+        <section class="hero">
+            <?!= include('Brand') ?>
+            <div class="hero-text">
+                <h1>แจ้งปัญหาคอมพิวเตอร์และอุปกรณ์</h1>
+                <p>ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก<br>
+                    กรอกรายละเอียดด้านล่าง เจ้าหน้าที่จะติดต่อกลับตามข้อมูลที่ให้ไว้</p>
+            </div>
+        </section>
+
+        <form class="repair-card" id="repairForm" novalidate>
+            <div class="card-head">
+                <h2>กรอกรายละเอียดแจ้งปัญหา</h2>
+                <span class="chip">ช่องที่มี <span class="req">*</span> ต้องกรอก</span>
+            </div>
+
+            <section class="section">
+                <h3 class="section-title">ข้อมูลครุภัณฑ์</h3>
+                <div class="grid grid--equip">
+                    <div class="field">
+                        <label class="field-label" for="category">ประเภทครุภัณฑ์ <span class="req">*</span></label>
+                        <select id="category" class="form-control">
+                            <option value="">เลือกประเภทครุภัณฑ์</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <div class="label-row">
+                            <label class="field-label" for="itemCode">เลขครุภัณฑ์/พัสดุ</label>
+                            <label class="toggle-inline">
+                                <input type="checkbox" id="noCode"> ไม่มีเลขครุภัณฑ์/เลขที่
+                            </label>
+                        </div>
+                        <input type="text" id="itemCode" class="form-control" placeholder="ระบุเลขครุภัณฑ์/พัสดุ"
+                            autocomplete="off">
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h3 class="section-title">รายละเอียดปัญหา</h3>
+                <div class="grid">
+                    <div class="field full">
+                        <label class="field-label" for="detail">รายละเอียดปัญหา <span class="req">*</span></label>
+                        <textarea id="detail" class="form-control" rows="3"
+                            placeholder="อธิบายอาการเสียหรือสิ่งที่ต้องการให้ซ่อม"></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label" for="location">สถานที่</label>
+                        <textarea id="location" class="form-control" rows="2"
+                            placeholder="อาคาร / ชั้น / ห้อง ที่ตั้งครุภัณฑ์"></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label" for="note">หมายเหตุ</label>
+                        <textarea id="note" class="form-control" rows="2"
+                            placeholder="ข้อมูลเพิ่มเติม เช่น ช่วงเวลาที่สะดวกให้เข้าซ่อม"></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label" for="urgency">ความเร่งด่วน</label>
+                        <select id="urgency" class="form-control"></select>
+                        <p class="field-help">ใช้งานไม่ได้เลย เลือก “ฉุกเฉิน”</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h3 class="section-title">รูปถ่าย</h3>
+                <p class="section-help">แนบได้สูงสุด 3 ภาพ · รองรับ .jpeg .jpg .png · ภาพละไม่เกิน
+                    <span id="maxMb">5</span> MB · ลากรูปมาวางในช่องได้เลย</p>
+                <p class="upload-count" id="uploadCount">แนบแล้ว 0 จาก 3 ภาพ</p>
+
+                <div class="upload-grid" id="uploadGrid">
+                    <div class="upload-slot" role="button" tabindex="0" aria-label="เลือกรูปภาพ">
+                        <div class="thumb"></div>
+                        <button type="button" class="pick-btn">เลือกรูป</button>
+                        <span class="file-name">ไม่ได้เลือกไฟล์</span>
+                        <input type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
+                    </div>
+                    <div class="upload-slot" role="button" tabindex="0" aria-label="เลือกรูปภาพ">
+                        <div class="thumb"></div>
+                        <button type="button" class="pick-btn">เลือกรูป</button>
+                        <span class="file-name">ไม่ได้เลือกไฟล์</span>
+                        <input type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
+                    </div>
+                    <div class="upload-slot" role="button" tabindex="0" aria-label="เลือกรูปภาพ">
+                        <div class="thumb"></div>
+                        <button type="button" class="pick-btn">เลือกรูป</button>
+                        <span class="file-name">ไม่ได้เลือกไฟล์</span>
+                        <input type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h3 class="section-title">ผู้แจ้ง</h3>
+                <div class="grid">
+                    <div class="field full">
+                        <span class="field-label" id="contactChannelLabel">ช่องทางติดต่อกลับ <span
+                                class="req">*</span></span>
+                        <div class="contact-methods" role="radiogroup" aria-labelledby="contactChannelLabel">
+                            <label class="contact-option">
+                                <input type="radio" name="contactChannel" value="phone" checked>
+                                <span class="contact-option-body">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path
+                                            d="M6.6 3h3l1.5 4-2 1.5a12 12 0 0 0 6.4 6.4L17 13l4 1.5v3a2 2 0 0 1-2.2 2A17 17 0 0 1 4.5 5.2 2 2 0 0 1 6.6 3z" />
+                                    </svg>
+                                    เบอร์โทร
+                                </span>
+                            </label>
+                            <label class="contact-option">
+                                <input type="radio" name="contactChannel" value="line">
+                                <span class="contact-option-body">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.6 9.6 0 0 1-4-.9L4 20l1.1-3.4A8.2 8.2 0 0 1 3 11.5C3 6.8 7 3 12 3s9 3.8 9 8.5z" />
+                                    </svg>
+                                    ไลน์ (LINE)
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="field full">
+                        <label class="field-label" for="department">หน่วยงาน <span class="req">*</span></label>
+                        <select id="department" class="form-control">
+                            <option value="">เลือกหน่วยงาน</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label" for="reporterName">ชื่อผู้แจ้ง <span class="req">*</span></label>
+                        <input type="text" id="reporterName" class="form-control" placeholder="ชื่อ-นามสกุลผู้แจ้ง"
+                            autocomplete="name">
+                        <p class="field-help">ใช้สำหรับติดต่อกลับและอ้างอิงใบแจ้งปัญหา</p>
+                    </div>
+
+                    <div class="field" id="phoneField">
+                        <label class="field-label" for="phone">เบอร์โทรติดต่อ <span class="req"
+                                id="phoneReq">*</span></label>
+                        <input type="tel" id="phone" class="form-control" placeholder="เช่น 081-234-5678"
+                            autocomplete="tel" inputmode="tel">
+                        <p class="field-help">เจ้าหน้าที่จะโทรกลับตามเบอร์นี้</p>
+                    </div>
+
+                    <div class="field full">
+                        <label class="field-label" for="email">อีเมล (ถ้ามี)</label>
+                        <input type="email" id="email" class="form-control"
+                            placeholder="เช่น name@example.go.th" autocomplete="email">
+                        <p class="field-help">ไม่บังคับ — ใช้ส่งสำเนาใบแจ้งหรือติดต่อกลับ</p>
+                    </div>
+
+                </div>
+
+                <div class="line-group is-collapsed" id="lineGroup" aria-hidden="true" inert>
+                    <div class="grid">
+                        <div class="field" id="lineIdField">
+                            <label class="field-label" for="lineId">ไอดีไลน์ (Line ID) <span
+                                    class="req">*</span></label>
+                            <input type="text" id="lineId" class="form-control"
+                                placeholder="เช่น @repaircenter หรือ lineid" autocomplete="off" spellcheck="false">
+                            <p class="field-help">ใช้ติดต่อกลับทาง LINE</p>
+                        </div>
+
+                        <div class="field" id="qrField">
+                            <span class="field-label">QR Code LINE (ถ้ามี)</span>
+                            <div class="qr-upload" id="qrUpload" role="button" tabindex="0"
+                                aria-label="แนบรูป QR Code LINE">
+                                <div class="qr-thumb" id="qrThumb"></div>
+                                <div class="qr-info">
+                                    <strong>แนบรูป QR Code LINE</strong>
+                                    <span class="qr-name" id="qrName">ยังไม่ได้แนบไฟล์</span>
+                                </div>
+                                <input type="file" id="qrInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" hidden>
+                            </div>
+                            <p class="field-help">คลิกหรือลากรูป QR มาวาง · ไม่บังคับ</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="actions">
+                <button type="reset" class="btn-ghost">ยกเลิก</button>
+                <button type="submit" class="btn-primary">แจ้งปัญหา</button>
+            </div>
+        </form>
+
+        <p class="form-footer">© 2569 ศูนย์การแพทย์แผนไทยและการแพทย์ทางเลือก</p>
+    </main>
+
+    <?!= include('Dialog') ?>
+    <?!= include('AppJS') ?>
+
+    <script>
+        window.LISTS = <?!= lists ?>;
+        window.MAX_FILE_MB = <?= maxFileMb ?>;
+        window.CURRENT_USER = '<?= currentUser ?>';
+    </script>
+
+    <script>
+        (function () {
+            'use strict';
+
+            var ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16"' +
+                ' rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 3 3 3-3 5 5"/></svg>';
+
+            var MAX_MB = window.MAX_FILE_MB || 5;
+            var form = document.getElementById('repairForm');
+            var category = document.getElementById('category');
+            var itemCode = document.getElementById('itemCode');
+            var noCode = document.getElementById('noCode');
+            var detail = document.getElementById('detail');
+            var reporter = document.getElementById('reporterName');
+            var department = document.getElementById('department');
+            var email = document.getElementById('email');
+            var urgency = document.getElementById('urgency');
+            var phone = document.getElementById('phone');
+            var lineId = document.getElementById('lineId');
+            var lineGroup = document.getElementById('lineGroup');
+            var phoneReq = document.getElementById('phoneReq');
+            var channelRadios = document.querySelectorAll('input[name="contactChannel"]');
+
+            /* ประเภทครุภัณฑ์ อ่านจาก LISTS ใน Code.gs */
+            (window.LISTS && window.LISTS.categories ? window.LISTS.categories : []).forEach(function (name) {
+                var option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                category.appendChild(option);
+            });
+
+            /* หน่วยงาน อ่านจาก LISTS ใน Code.gs */
+            (window.LISTS && window.LISTS.departments ? window.LISTS.departments : []).forEach(function (name) {
+                var option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                department.appendChild(option);
+            });
+
+            /* ความเร่งด่วน อ่านจาก LISTS ใน Code.gs (ค่าเริ่มต้น: ปกติ) */
+            (window.LISTS && window.LISTS.urgencies ? window.LISTS.urgencies : ['ปกติ']).forEach(function (name) {
+                var option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                if (name === 'ปกติ') {
+                    option.selected = true;
+                }
+                urgency.appendChild(option);
+            });
+
+            /* ชื่อผู้แจ้ง: ล็อกช่องไว้เฉพาะเมื่อเปิดพร้อม session ที่ล็อกอินแล้ว
+               (มี __DTAM_TOKEN) — หน้าสาธารณะ/โหมดตัวอย่างให้กรอกได้เอง */
+            var signedIn = !!window.__DTAM_TOKEN &&
+                window.CURRENT_USER && window.CURRENT_USER !== 'ผู้ใช้งาน';
+            if (signedIn) {
+                reporter.value = window.CURRENT_USER;
+                reporter.readOnly = true;
+                reporter.classList.add('is-readonly');
+            }
+
+            document.getElementById('maxMb').textContent = MAX_MB;
+
+            /* ช่องทางติดต่อกลับ: เบอร์โทร หรือ LINE */
+            function isLineChannel() {
+                var checked = document.querySelector('input[name="contactChannel"]:checked');
+                return !!checked && checked.value === 'line';
+            }
+
+            function syncChannel() {
+                var line = isLineChannel();
+
+                /* ค่อย ๆ กาง/หุบ กลุ่มช่อง LINE ไม่ให้หายวับ */
+                lineGroup.classList.toggle('is-collapsed', !line);
+                lineGroup.inert = !line;
+                lineGroup.setAttribute('aria-hidden', line ? 'false' : 'true');
+
+                phoneReq.hidden = line;
+                if (line) {
+                    phone.classList.remove('is-invalid');
+                } else {
+                    lineId.classList.remove('is-invalid');
+                }
+            }
+
+            Array.prototype.forEach.call(channelRadios, function (radio) {
+                radio.addEventListener('change', syncChannel);
+            });
+            syncChannel();
+
+            /* ไม่มีเลขครุภัณฑ์/เลขที่ */
+            noCode.addEventListener('change', function () {
+                if (noCode.checked) {
+                    itemCode.value = '';
+                    itemCode.disabled = true;
+                    itemCode.placeholder = 'ไม่ระบุ (ไม่มีเลขครุภัณฑ์/เลขที่)';
+                } else {
+                    itemCode.disabled = false;
+                    itemCode.placeholder = 'ระบุเลขครุภัณฑ์/พัสดุ';
+                }
+            });
+
+            /* รูปถ่าย 3 ช่อง */
+            var MAX_SLOTS = 3;
+            var slots = [];
+            var countOut = document.getElementById('uploadCount');
+
+            function refreshCount() {
+                var used = slots.filter(function (slot) {
+                    return slot.entry.file;
+                }).length;
+                countOut.textContent = 'แนบแล้ว ' + used + ' จาก ' + MAX_SLOTS + ' ภาพ';
+                countOut.classList.toggle('is-complete', used === MAX_SLOTS);
+            }
+
+            function clearSlot(slot) {
+                if (slot.entry.url) {
+                    URL.revokeObjectURL(slot.entry.url);
+                }
+                slot.entry.file = null;
+                slot.entry.url = '';
+                slot.el.classList.remove('has-file');
+                slot.el.querySelector('input[type="file"]').value = '';
+                slot.el.querySelector('.thumb').innerHTML = ICON;
+                var nameOut = slot.el.querySelector('.file-name');
+                nameOut.textContent = 'ไม่ได้เลือกไฟล์';
+                nameOut.classList.remove('has-file');
+                refreshCount();
+            }
+
+            function setSlot(slot, file) {
+                if (!/^image\/(jpeg|png)$/.test(file.type)) {
+                    App.dialog('ไฟล์ไม่ถูกต้อง', 'รองรับเฉพาะไฟล์ .jpeg .jpg .png');
+                    return;
+                }
+                if (file.size > MAX_MB * 1024 * 1024) {
+                    App.dialog('ไฟล์ใหญ่เกินกำหนด', 'ภาพแต่ละภาพต้องไม่เกิน ' + MAX_MB + ' MB');
+                    return;
+                }
+
+                if (slot.entry.url) {
+                    URL.revokeObjectURL(slot.entry.url);
+                }
+                slot.entry.file = file;
+                slot.entry.url = URL.createObjectURL(file);
+
+                var thumb = slot.el.querySelector('.thumb');
+                thumb.innerHTML = '<img src="' + slot.entry.url + '" alt="">' +
+                    '<button type="button" class="thumb-remove" aria-label="ลบรูป">&times;</button>';
+                thumb.querySelector('.thumb-remove').addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    clearSlot(slot);
+                });
+
+                var nameOut = slot.el.querySelector('.file-name');
+                nameOut.textContent = file.name;
+                nameOut.classList.add('has-file');
+                slot.el.classList.add('has-file');
+                refreshCount();
+            }
+
+            Array.prototype.forEach.call(document.querySelectorAll('.upload-slot'), function (el, index) {
+                var input = el.querySelector('input[type="file"]');
+                var slot = { el: el, entry: { file: null, url: '' }, index: index };
+                slots.push(slot);
+
+                el.querySelector('.thumb').innerHTML = ICON;
+
+                function openPicker() {
+                    input.click();
+                }
+
+                el.addEventListener('click', function (event) {
+                    if (event.target === input || event.target.closest('.thumb-remove')) {
+                        return;
+                    }
+                    openPicker();
+                });
+
+                el.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openPicker();
+                    }
+                });
+
+                ['dragenter', 'dragover'].forEach(function (type) {
+                    el.addEventListener(type, function (event) {
+                        event.preventDefault();
+                        el.classList.add('is-dragover');
+                    });
+                });
+
+                ['dragleave', 'dragend', 'drop'].forEach(function (type) {
+                    el.addEventListener(type, function () {
+                        el.classList.remove('is-dragover');
+                    });
+                });
+
+                el.addEventListener('drop', function (event) {
+                    var file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+                    if (file) {
+                        setSlot(slot, file);
+                    }
+                });
+
+                input.addEventListener('change', function () {
+                    var file = input.files && input.files[0];
+                    if (file) {
+                        setSlot(slot, file);
+                    }
+                });
+            });
+
+            refreshCount();
+
+            /* ---------- รูป QR Code LINE (ไม่บังคับ) ---------- */
+
+            var qrInput = document.getElementById('qrInput');
+            var qrUpload = document.getElementById('qrUpload');
+            var qrThumb = document.getElementById('qrThumb');
+            var qrName = document.getElementById('qrName');
+            var qrEntry = { file: null, url: '' };
+
+            qrThumb.innerHTML = ICON;
+
+            function clearQr() {
+                if (qrEntry.url) {
+                    URL.revokeObjectURL(qrEntry.url);
+                }
+                qrEntry.file = null;
+                qrEntry.url = '';
+                qrInput.value = '';
+                qrUpload.classList.remove('has-file');
+                qrThumb.innerHTML = ICON;
+                qrName.textContent = 'ยังไม่ได้แนบไฟล์';
+                qrName.classList.remove('has-file');
+            }
+
+            function setQr(file) {
+                if (!/^image\/(jpeg|png)$/.test(file.type)) {
+                    App.dialog('ไฟล์ไม่ถูกต้อง', 'รองรับเฉพาะไฟล์ .jpeg .jpg .png');
+                    return;
+                }
+                if (file.size > MAX_MB * 1024 * 1024) {
+                    App.dialog('ไฟล์ใหญ่เกินกำหนด', 'รูป QR ต้องไม่เกิน ' + MAX_MB + ' MB');
+                    return;
+                }
+
+                if (qrEntry.url) {
+                    URL.revokeObjectURL(qrEntry.url);
+                }
+                qrEntry.file = file;
+                qrEntry.url = URL.createObjectURL(file);
+
+                qrThumb.innerHTML = '<img src="' + qrEntry.url + '" alt="">' +
+                    '<button type="button" class="thumb-remove" aria-label="ลบรูป QR">&times;</button>';
+                qrThumb.querySelector('.thumb-remove').addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    clearQr();
+                });
+
+                qrName.textContent = file.name;
+                qrName.classList.add('has-file');
+                qrUpload.classList.add('has-file');
+            }
+
+            qrUpload.addEventListener('click', function (event) {
+                if (event.target === qrInput || event.target.closest('.thumb-remove')) {
+                    return;
+                }
+                qrInput.click();
+            });
+
+            qrUpload.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    qrInput.click();
+                }
+            });
+
+            ['dragenter', 'dragover'].forEach(function (type) {
+                qrUpload.addEventListener(type, function (event) {
+                    event.preventDefault();
+                    qrUpload.classList.add('is-dragover');
+                });
+            });
+
+            ['dragleave', 'dragend', 'drop'].forEach(function (type) {
+                qrUpload.addEventListener(type, function () {
+                    qrUpload.classList.remove('is-dragover');
+                });
+            });
+
+            qrUpload.addEventListener('drop', function (event) {
+                var file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+                if (file) {
+                    setQr(file);
+                }
+            });
+
+            qrInput.addEventListener('change', function () {
+                var file = qrInput.files && qrInput.files[0];
+                if (file) {
+                    setQr(file);
+                }
+            });
+
+            var locationEl = document.getElementById('location');
+            var noteEl = document.getElementById('note');
+            var submitBtn = form.querySelector('button[type="submit"]');
+
+            /* ---------- ส่งข้อมูลขึ้น Google Sheet ---------- */
+
+            /* อ่านไฟล์เป็น base64 (ตัดหัว data: ออก) เพื่อส่งผ่าน google.script.run */
+            function fileToPayload(file) {
+                return new Promise(function (resolve, reject) {
+                    var reader = new FileReader();
+
+                    reader.onload = function () {
+                        var text = String(reader.result || '');
+                        var comma = text.indexOf(',');
+
+                        resolve({
+                            name: file.name || 'photo.jpg',
+                            mimeType: file.type || 'image/jpeg',
+                            data: comma >= 0 ? text.slice(comma + 1) : text
+                        });
+                    };
+
+                    reader.onerror = function () {
+                        reject(new Error('อ่านไฟล์ ' + (file.name || '') + ' ไม่สำเร็จ'));
+                    };
+
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            function setBusy(busy) {
+                if (!submitBtn) {
+                    return;
+                }
+
+                submitBtn.disabled = busy;
+                submitBtn.textContent = busy ? 'กำลังส่ง…' : 'แจ้งปัญหา';
+            }
+
+            function sendToServer(payload) {
+                var runner = window.google && window.google.script && window.google.script.run;
+
+                if (!runner) {
+                    setBusy(false);
+                    App.dialog('ยังบันทึกข้อมูลไม่ได้',
+                        'หน้านี้เปิดแบบตัวอย่าง (ไม่มี Apps Script) — กรุณาเปิดผ่านเว็บแอปที่ deploy แล้ว');
+                    return;
+                }
+
+                runner
+                    .withSuccessHandler(function (result) {
+                        setBusy(false);
+
+                        var no = result && result.ticketNo ? result.ticketNo : '';
+
+                        form.reset();
+                        App.dialog('แจ้งปัญหาสำเร็จ',
+                            'เลขที่ใบแจ้ง: ' + no +
+                            '\nกรุณาเก็บเลขนี้ไว้สำหรับติดตามสถานะ');
+                    })
+                    .withFailureHandler(function (err) {
+                        setBusy(false);
+                        App.dialog('ส่งข้อมูลไม่สำเร็จ',
+                            (err && err.message) ? err.message : 'กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+                    })
+                    .submitForm(payload);
+            }
+
+            /* ---------- ตรวจข้อมูลบังคับ ---------- */
+
+            var required = [
+                { el: category, label: 'ประเภทครุภัณฑ์' },
+                { el: detail, label: 'รายละเอียดปัญหา' },
+                { el: department, label: 'หน่วยงาน' },
+                { el: reporter, label: 'ชื่อผู้แจ้ง' }
+            ];
+
+            /* เบอร์โทรกับไอดีไลน์ บังคับตามช่องทางที่เลือก */
+            function requiredFields() {
+                var fields = required.slice();
+                fields.push(isLineChannel()
+                    ? { el: lineId, label: 'ไอดีไลน์' }
+                    : { el: phone, label: 'เบอร์โทรติดต่อ' });
+                return fields;
+            }
+
+            required.concat([{ el: phone }, { el: lineId }, { el: email }]).forEach(function (item) {
+                ['input', 'change'].forEach(function (type) {
+                    item.el.addEventListener(type, function () {
+                        if (item.el.value.trim()) {
+                            item.el.classList.remove('is-invalid');
+                        }
+                    });
+                });
+            });
+
+            /* ส่งฟอร์ม — ขั้นถัดไป: ส่งเข้า submitForm() ใน Code.gs */
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+
+                var missing = [];
+                var firstBad = null;
+
+                requiredFields().forEach(function (item) {
+                    var empty = !item.el.value.trim();
+                    item.el.classList.toggle('is-invalid', empty);
+                    if (empty) {
+                        missing.push(item.label);
+                        if (!firstBad) {
+                            firstBad = item.el;
+                        }
+                    }
+                });
+
+                var phoneValue = phone.value.trim();
+                if (phoneValue && !/^[0-9+\-\s()]{6,20}$/.test(phoneValue)) {
+                    phone.classList.add('is-invalid');
+                    if (!firstBad) {
+                        firstBad = phone;
+                    }
+                    missing.push('เบอร์โทรติดต่อ (รูปแบบไม่ถูกต้อง)');
+                }
+
+                var emailValue = email.value.trim();
+                if (emailValue && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+                    email.classList.add('is-invalid');
+                    if (!firstBad) {
+                        firstBad = email;
+                    }
+                    missing.push('อีเมล (รูปแบบไม่ถูกต้อง)');
+                }
+
+                var lineValue = lineId.value.trim();
+                if (isLineChannel() && lineValue && !/^@?[A-Za-z0-9._-]{2,40}$/.test(lineValue)) {
+                    lineId.classList.add('is-invalid');
+                    if (!firstBad) {
+                        firstBad = lineId;
+                    }
+                    missing.push('ไอดีไลน์ (รูปแบบไม่ถูกต้อง)');
+                }
+
+                if (missing.length) {
+                    if (firstBad) {
+                        firstBad.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        firstBad.focus({ preventScroll: true });
+                    }
+                    App.dialog('ข้อมูลไม่ครบหรือไม่ถูกต้อง', 'กรุณาตรวจสอบ: ' + missing.join(', '));
+                    return;
+                }
+
+                var photoFiles = slots
+                    .map(function (slot) { return slot.entry.file; })
+                    .filter(function (file) { return !!file; });
+
+                setBusy(true);
+
+                /* อ่านรูปทั้งหมดพร้อมกัน (รูปอาการเสีย + QR ถ้ามี) */
+                var reads = photoFiles.map(fileToPayload);
+
+                if (qrEntry.file) {
+                    reads.push(fileToPayload(qrEntry.file));
+                }
+
+                Promise.all(reads).then(function (files) {
+                    var payload = {
+                        name: reporter.value.trim(),
+                        department: department.value,
+                        phone: phone.value.trim(),
+                        lineId: lineId.value.trim(),
+                        email: email.value.trim(),
+                        contactChannel: isLineChannel() ? 'line' : 'phone',
+                        itemCode: itemCode.disabled ? '' : itemCode.value.trim(),
+                        category: category.value,
+                        location: locationEl.value.trim(),
+                        detail: detail.value.trim(),
+                        note: noteEl.value.trim(),
+                        urgency: urgency.value || 'ปกติ',
+                        photos: files.slice(0, photoFiles.length),
+                        qrFile: qrEntry.file ? files[files.length - 1] : null
+                    };
+
+                    sendToServer(payload);
+                }).catch(function (err) {
+                    setBusy(false);
+                    App.dialog('อ่านไฟล์ไม่สำเร็จ', err.message);
+                });
+            });
+
+            form.addEventListener('reset', function () {
+                slots.forEach(clearSlot);
+                clearQr();
+
+                required.forEach(function (item) {
+                    item.el.classList.remove('is-invalid');
+                });
+                phone.classList.remove('is-invalid');
+                lineId.classList.remove('is-invalid');
+                email.classList.remove('is-invalid');
+
+                /* ให้ radio กลับเป็นค่าเริ่มต้นก่อน แล้วค่อยซิงก์ช่อง */
+                setTimeout(syncChannel, 0);
+
+                noCode.checked = false;
+                itemCode.disabled = false;
+                itemCode.placeholder = 'ระบุเลขครุภัณฑ์/พัสดุ';
+            });
+
+            App.initShell();
+        })();
+    </script>
+
+<?!= include('NavJS') ?>
+</body>
+
+</html>
