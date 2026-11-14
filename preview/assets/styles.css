@@ -141,14 +141,15 @@
         }
     }
 
-    /* เฟืองแต่ละตัวหมุนรอบศูนย์กลางของตัวเองตลอดเวลา (viewBox 512×512) */
+    /* เฟืองแต่ละตัวหมุนรอบศูนย์กลางของตัวเองตลอดเวลา (viewBox 512×512)
+       จุดหมุนวัดจากขอบจริงของภาพ ไม่โยกตอนหมุน */
     .page-logo-icon .gear--big {
-        transform-origin: 168px 295px;
+        transform-origin: 168.5px 288.5px;
         animation: logo-spin 10s linear infinite;
     }
 
     .page-logo-icon .gear--small {
-        transform-origin: 398px 163px;
+        transform-origin: 398px 158.5px;
         animation: logo-spin 7.5s linear infinite reverse;
     }
 
