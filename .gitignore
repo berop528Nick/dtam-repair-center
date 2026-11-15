@@ -1,0 +1,6 @@
+# ขึ้น GitHub แค่โฟลเดอร์ docs/ (หน้ากาก GitHub Pages) เท่านั้น
+# โค้ดระบบทั้งหมดเก็บแค่ในเครื่อง + บน Google Apps Script ห้ามหลุดขึ้น GitHub
+*
+!docs/
+!docs/**
+!.gitignore
